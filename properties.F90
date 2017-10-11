@@ -2,25 +2,16 @@
 #include <petsc/finclude/petscksp.h>
     use petscksp
     implicit none
-
-    ! Petsc Variables
-    MPI_Comm comm
-    PetscMPIInt my_id, nproc
-    Mat A
-    Vec b,u,x
-    KSP ksp
-    PC pc
-    PetscInt Istart, Iend
-    PetscErrorCode ierr
     
     ! mpi variables
-    integer :: rx, ry, px, py, north, south, east, west, &
+    integer :: comm, my_id, nproc, ierr, &
+               rx, ry, px, py, north, south, east, west, &
                fh, etype, amode, info, stat(MPI_Status_Size), core_array, glob_array
     integer(kind=MPI_Offset_Kind) :: dispx, dispy
     
     type :: grid
-        integer :: nx, ny, bx, by, offx, offy
-        integer, allocatable :: type_x(:,:), type_y(:,:), nnode(:,:)
+        integer :: nx, ny, bx, by, offx, offy, nglob, nloc, dof
+        integer, allocatable :: type_x(:,:), type_y(:,:), node(:,:,:)
         real(8) :: dt, t, l, w, ew
         real(8), allocatable :: dx(:), dlx(:), dy(:), dly(:), r(:)
     end type
@@ -56,7 +47,7 @@
     type(grid), intent(inout) :: g
     real(8), intent(in) :: l, w, ew
     integer, intent(in) :: nx, ny, px, py
-    integer :: i, j, loc_neqn, glob_neqn
+    integer :: i, j, d
     real(8) :: xtemp, ytemp
     real(8), allocatable :: x(:), y(:)
     
@@ -94,7 +85,7 @@
     
     xtemp = 2.5 / float(g%nx+1)
     x = (/ ( tanh(-1.25 + xtemp * (g%offx + i - 1)), i = 1, g%bx+2) /)
-    !x = (/ ( g%l / float(g%bx+1) * (i - 1), i = 1, g%bx+2) /)
+    x = (/ ( g%l / float(g%bx+1) * (i - 1), i = 1, g%bx+2) /)
     
     xtemp = x(1)
     call MPI_Bcast( xtemp, 1, MPI_Real8, 0, comm, ierr)
@@ -159,34 +150,22 @@
     g%t = 0
     g%dt = 1e-6
     
-    loc_neqn = g%bx * g%by
-    glob_neqn = g%nx * g%ny
+    g%dof   = 1
+    g%nloc  = g%bx * g%by * g%dof
+    g%nglob = g%nx * g%ny * g%dof
     
-    ! Petsc Objects A and b
-    call MatCreate(comm, A, ierr)
-    call MatSetSizes(A, loc_neqn, loc_neqn, glob_neqn, glob_neqn, ierr)
-    call MatSetUp(A, ierr)
-    call MatSetFromOptions(A, ierr)
-    call MatSeqAIJSetPreallocation(A, 5, petsc_null_integer, ierr)
-    call MatSetOption(A, mat_ignore_zero_entries, petsc_true, ierr)
-
-    ! Find parallel partitioning range
-    call MatGetOwnershipRange(A, Istart, Iend, ierr)
-
-    ! Create parallel vectors
-    call VecCreateMPI(comm, loc_neqn, glob_neqn, b, ierr)
-    call VecSetFromOptions(b, ierr)
-    call VecSetOption(b, vec_ignore_negative_indices, petsc_true, ierr)
-    
-    allocate( g%nnode(g%bx+2, g%by+2) )
-    g%nnode = 0
-    do j = 2, g%by+1
-        do i = 2, g%bx+1
-            g%nnode(i,j) = istart + (i - 2) + (j - 2) * g%bx
+    allocate( g%node(g%bx+2, g%by+2, g%dof) )
+    g%node = 0
+    do d = 1, g%dof
+        do j = 2, g%by+1
+            do i = 2, g%bx+1
+                g%node(i,j,d) = g%nloc * my_id + (d - 1) &
+                            + ((i - 2) + (j - 2) * g%bx) * g%dof
+            end do
         end do
+        
+        call comm_int(g%bx, g%by, g%node(:,:,d))
     end do
-    
-    call comm_int(g%bx, g%by, g%nnode)
     
     ! MPI-IO Variables
     amode = MPI_Mode_WRonly + MPI_Mode_Create + MPI_Mode_EXCL
@@ -316,15 +295,6 @@
     call MPI_File_Set_View(fh, offset, etype, glob_array, 'native', info, ierr)
     call MPI_File_Write_All(fh, dat, 1, core_array, stat, ierr)
     call MPI_File_Close(fh, ierr)
-    end subroutine
-    
-! *** View Matrix and Vector ***
-    subroutine view
-    integer :: wait
-    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    call VecView(b,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    if (my_id == 0) read(*,*) wait
-    call MPI_Barrier(comm, ierr)
     end subroutine
     
     end module

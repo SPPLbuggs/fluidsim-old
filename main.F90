@@ -1,8 +1,8 @@
     program main
     use props
+    use petsc_lib
     use lapl_lib
     use ptcl_lib
-    use sfc_lib
     implicit none
     
     type(grid) :: g
@@ -105,8 +105,8 @@
     call MPI_Barrier(comm, ierr)
     
     call g_init(g, nx, ny, px, py, l, w, ew)
-    call lapl_init(g, vl, rftype)
     call p_init(g)
+    call lapl_init(g, vl, rftype)
     
     do
         ts = ts + 1
@@ -114,10 +114,10 @@
         if (g%t >= t_fin) exit
         
         ! Solve poisson system
-        call lapl_solve(g, rho)
+        call lapl_solve(g)
         
         ! Solve particle system
-        call p_step(g, phi)
+        call p_step(g, phif(:,:,1))
         
         if ((t_pr <= g%t) .and. (my_id == 0)) then
             call cpu_time(time2)
@@ -130,7 +130,7 @@
     
         if (t_sv <= g%t) then
         !if (mod(ts,int(3)) == 0) then
-            call savedat('output/phi.dat', phi * phi0)
+            call savedat('output/phi.dat', phif(:,:,1) * phi0)
             call savedat('output/ni.dat', ni(:,:,1) / x0**3)
             call savedat('output/ne.dat', ne(:,:,1) / x0**3)
             call savedat('output/nt.dat', nt(:,:,1) * phi0 / x0**3)
@@ -154,8 +154,6 @@
     end if
     
     call KSPDestroy(ksp,ierr)
-    call VecDestroy(u,ierr)
-    call VecDestroy(x,ierr)
     call VecDestroy(b,ierr)
     call MatDestroy(A,ierr)
     call PetscFinalize(ierr)
