@@ -59,7 +59,7 @@
             scfac = min(2.5d0, max(3d-1, scfac))
             g%dt = scfac * g%dt
             
-            g%dt = min(max(g%dt, 1d-9), tau_m)
+            g%dt = min(max(g%dt, 1d-9), tau_m/2.0)
             
             call MPI_Bcast(g%dt, 1, etype, 0, comm, ierr)
            
@@ -287,7 +287,7 @@
                 a = 0
             end if
             
-            fluxi_x(i,j) = mui * Ex * ni(i+1,j+1,2) &
+            fluxi_x(i,j) = a * mui * Ex * ni(i+1,j+1,2) &
                            - 0.25 * vi * ni(i+1,j+1,2)
                            
         ! Case: vacuum
@@ -312,7 +312,7 @@
                 a = 0
             end if
             
-            fluxi_x(i,j) = mui * Ex * ni(i,j+1,2) &
+            fluxi_x(i,j) = a * mui * Ex * ni(i,j+1,2) &
                            + 0.25 * vi * ni(i,j+1,2)
                           
 
@@ -410,6 +410,7 @@
     do j = 1, g%by
         ! Left boundary
         i = 1
+        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
         
         ! Case: electrode
         if (g%type_x(i,j) == -2) then
@@ -424,11 +425,11 @@
             mut = get_mut(Te(1))
             ve = sqrt( (16.0 * e * phi0 * Te(1)) / (3.0 * pi * me)) * t0 / x0
             
-            fluxe_x(i,j) = - mue * Ex * ne(i+1,j+1,2) &
+            fluxe_x(i,j) = - a * mue * Ex * ne(i+1,j+1,2) &
                            - 0.25 * ve * ne(i+1,j+1,2) &
                            - gam * fluxi_x(i,j)
             
-            fluxt_x(i,j) = - mut * Ex * nt(i+1,j+1,2) &
+            fluxt_x(i,j) = - a * mut * Ex * nt(i+1,j+1,2) &
                            - 1.0/3.0 * ve * nt(i+1,j+1,2) &
                            - gam * Te(1) * fluxi_x(i,j)
 
@@ -455,6 +456,7 @@
         
         ! Right boundary
         i = g%bx+1
+        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
         
         ! Case: electrode
         if (g%type_x(i-1,j) == 2) then
@@ -469,11 +471,11 @@
             mut = get_mut(Te(1))
             ve = sqrt( (16.0 * e * phi0 * Te(1)) / (3.0 * pi * me)) * t0 / x0
             
-            fluxe_x(i,j) = - mue * Ex * ne(i,j+1,2) &
+            fluxe_x(i,j) = - a * mue * Ex * ne(i,j+1,2) &
                            + 0.25 * ve * ne(i,j+1,2) &
                            - gam * fluxi_x(i,j)
 
-            fluxt_x(i,j) = - mut * Ex * nt(i,j+1,2) &
+            fluxt_x(i,j) = - a * mut * Ex * nt(i,j+1,2) &
                            + 1.0/3.0 * ve * nt(i,j+1,2) &
                            - gam * Te(1) * fluxi_x(i,j)
 

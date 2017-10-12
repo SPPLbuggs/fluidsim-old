@@ -85,7 +85,7 @@
     
     xtemp = 2.5 / float(g%nx+1)
     x = (/ ( tanh(-1.25 + xtemp * (g%offx + i - 1)), i = 1, g%bx+2) /)
-    x = (/ ( g%l / float(g%bx+1) * (i - 1), i = 1, g%bx+2) /)
+    !x = (/ ( g%l / float(g%bx+1) * (i - 1), i = 1, g%bx+2) /)
     
     xtemp = x(1)
     call MPI_Bcast( xtemp, 1, MPI_Real8, 0, comm, ierr)

@@ -25,7 +25,6 @@
     
     ! Update electrode potential
     call upd_ep(g%t, phiL)
-    phiL = -0.3
     
     ! Update boundary conditions:
     if (rx == 0) then
@@ -181,7 +180,7 @@
     real(8), intent(out) :: p
     
     if (rftype == 1) then
-            p  = ampl * sin( 2 * pi * t )
+            p  = ampl * sin( 2 * pi * t ) ! 1 MHz
             
     else if (rftype == 2) then
         if (t < 2.5d-1) then

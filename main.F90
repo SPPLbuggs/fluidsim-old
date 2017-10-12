@@ -28,7 +28,7 @@
     ew = 1
     vl = -300/phi0
     rftype = 0
-    t_fin = 1
+    t_fin = 20
     t_pr = 2.77778e-3
     t_sv = 5e-3
     
