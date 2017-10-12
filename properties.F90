@@ -71,6 +71,7 @@
     ! Domain decomposition
     g%bx = nx / px
     g%by = ny / py
+    
     g%offx = rx * g%bx
     g%offy = ry * g%by
     

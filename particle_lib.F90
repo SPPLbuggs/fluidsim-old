@@ -3,17 +3,15 @@
     use ptcl_props
     implicit none
     
-    real(8), allocatable :: ki(:,:,:), ni(:,:,:), fluxi_x(:,:), fluxi_y(:,:), &
-                            ke(:,:,:), ne(:,:,:), fluxe_x(:,:), fluxe_y(:,:), &
-                            km(:,:,:), nm(:,:,:), fluxm_x(:,:), fluxm_y(:,:), &
-                            kt(:,:,:), nt(:,:,:), fluxt_x(:,:), fluxt_y(:,:), &
-                            rho(:,:),  jx(:,:), jy(:,:)
+    real(8), allocatable :: ki(:,:,:), ni(:,:,:), &
+                            ke(:,:,:), ne(:,:,:), &
+                            km(:,:,:), nm(:,:,:), &
+                            kt(:,:,:), nt(:,:,:)
     real(8) :: err_prev = 1, tau_m
     
     ! variables
-    public  :: ni, ne, nm, nt, rho, jx, jy, tau_m
-    private :: ki, ke, km, kt, fluxi_x, fluxi_y, fluxe_x, fluxe_y,&
-               fluxm_x, fluxm_y, fluxt_x, fluxt_y, err_prev
+    public  :: ni, ne, nm, nt, tau_m
+    private :: ki, ke, km, kt, err_prev
     
     ! subroutines
     public  :: p_step, p_init
@@ -33,11 +31,6 @@
     do
         stage = stage + 1
         if (stage > 5) exit
-        
-        ! Update particle fluxes
-        call upd_fluxi(g, phi)
-        call upd_fluxe(g, phi)
-        call upd_fluxm(g)
         
         ! Update particle densities
         do j = 2, g%by+1
@@ -77,7 +70,6 @@
         end if
     end do
     
-    rho = (ni(:,:,1) - ne(:,:,1)) + rho
     ni(:,:,3) = ni(:,:,2)
     ne(:,:,3) = ne(:,:,2)
     nm(:,:,3) = nm(:,:,2)
@@ -95,14 +87,9 @@
     type(grid), intent(inout) :: g
     
     allocate( ki(g%bx+2, g%by+2, 5), ni(g%bx+2, g%by+2, 3), &
-              fluxi_x(g%bx+1,g%by), fluxi_y(g%bx,g%by+1), &
               ke(g%bx+2, g%by+2, 5), ne(g%bx+2, g%by+2, 3), &
-              fluxe_x(g%bx+1,g%by), fluxe_y(g%bx,g%by+1), &
               kt(g%bx+2, g%by+2, 5), nt(g%bx+2, g%by+2, 3), &
-              fluxt_x(g%bx+1,g%by), fluxt_y(g%bx,g%by+1), &
-              km(g%bx+2, g%by+2, 5), nm(g%bx+2, g%by+2, 3), &
-              fluxm_x(g%bx+1,g%by), fluxm_y(g%bx,g%by+1), &
-              rho(g%bx+2, g%by+2),   jx(g%bx+3, g%by+2), jy(g%bx+2, g%by+3) )
+              km(g%bx+2, g%by+2, 5), nm(g%bx+2, g%by+2, 3) )
     
     ki = 0
     ke = 0
@@ -112,9 +99,6 @@
     ne = n_init
     nt = n_init / phi0
     nm = n_init
-    rho = 0
-    jx = 0
-    jy = 0
     end subroutine
 
 ! *** Particle Continuity ***
@@ -123,22 +107,26 @@
     integer, intent(in)    :: i, j, stage
     real(8), intent(in)    :: phi(:,:)
     real(8) :: Ex = 0, Ey = 0, Te, &
-               dfluxi_dx = 0, dfluxi_dy = 0, fluxi_xm = 0, fluxi_ym = 0, &
-               dfluxe_dx = 0, dfluxe_dy = 0, fluxe_xm = 0, fluxe_ym = 0, &
-               dfluxt_dx = 0, dfluxt_dy = 0, &
-               dfluxm_dx = 0, dfluxm_dy = 0, &
+               dfluxi_dx = 0, dfluxi_dy = 0, fluxi_x(2), fluxi_y(2), &
+               dfluxe_dx = 0, dfluxe_dy = 0, fluxe_x(2), fluxe_y(2), &
+               dfluxt_dx = 0, dfluxt_dy = 0, fluxt_x(2), fluxt_y(2), &
+               dfluxm_dx = 0, dfluxm_dy = 0, fluxm_x(2), fluxm_y(2), &
                term_sie, term_st1, term_st2, term_st3, term_sm, &
                k_ir, k_ex, k_sc, k_si, nu
     
+    ! Calculate particle fluxes
+    call calc_fluxi(g, i, j, phi, fluxi_x, fluxi_y)
+    call calc_fluxe(g, i, j, phi, fluxe_x, fluxe_y, fluxt_x, fluxt_y)
+    call calc_fluxm(g, i, j, fluxm_x, fluxm_y)
+    
     ! X-dir flux gradients
-    dfluxi_dx = (fluxi_x(i,j-1) - fluxi_x(i-1,j-1)) / g%dlx(i-1)
-    dfluxe_dx = (fluxe_x(i,j-1) - fluxe_x(i-1,j-1)) / g%dlx(i-1)
-    dfluxt_dx = (fluxt_x(i,j-1) - fluxt_x(i-1,j-1)) / g%dlx(i-1)
-    dfluxm_dx = (fluxm_x(i,j-1) - fluxm_x(i-1,j-1)) / g%dlx(i-1)
+    dfluxi_dx = (fluxi_x(2) - fluxi_x(1)) / g%dlx(i-1)
+    dfluxe_dx = (fluxe_x(2) - fluxe_x(1)) / g%dlx(i-1)
+    dfluxt_dx = (fluxt_x(2) - fluxt_x(1)) / g%dlx(i-1)
+    dfluxm_dx = (fluxm_x(2) - fluxm_x(1)) / g%dlx(i-1)
     
     ! X-dir midpoint fluxes
-    fluxi_xm = 0.5 * (fluxi_x(i,j-1) + fluxi_x(i-1,j-1))
-    fluxe_xm = 0.5 * (fluxe_x(i,j-1) + fluxe_x(i-1,j-1))
+    fluxe_x(1) = 0.5 * (fluxe_x(2) + fluxe_x(1))
     Ex = -((phi(i+1,j) - phi(i,j)) / g%dx(i) &
          +(phi(i,j) - phi(i-1,j)) / g%dx(i-1) &
          ) / 2.0
@@ -147,28 +135,27 @@
         
         ! Y-dir flux gradients
         if (cyl) then
-            dfluxi_dy = (fluxi_y(i-1,j) * (g%r(j+1) + g%r(j)) / 2.0   &
-                         - fluxi_y(i-1,j-1) * (g%r(j) + g%r(j-1)) / 2.0) &
+            dfluxi_dy = (fluxi_y(2) * (g%r(j+1) + g%r(j)) / 2.0   &
+                         - fluxi_y(1) * (g%r(j) + g%r(j-1)) / 2.0) &
                          / g%dly(j-1) / g%r(j)
-            dfluxe_dy = (fluxe_y(i-1,j) * (g%r(j+1) + g%r(j)) / 2.0   &
-                         - fluxe_y(i-1,j-1) * (g%r(j) + g%r(j-1)) / 2.0) &
+            dfluxe_dy = (fluxe_y(2) * (g%r(j+1) + g%r(j)) / 2.0   &
+                         - fluxe_y(1) * (g%r(j) + g%r(j-1)) / 2.0) &
                          / g%dly(j-1) / g%r(j)
-            dfluxt_dy = (fluxt_y(i-1,j) * (g%r(j+1) + g%r(j)) / 2.0   &
-                         - fluxt_y(i-1,j-1) * (g%r(j) + g%r(j-1)) / 2.0) &
+            dfluxt_dy = (fluxt_y(2) * (g%r(j+1) + g%r(j)) / 2.0   &
+                         - fluxt_y(1) * (g%r(j) + g%r(j-1)) / 2.0) &
                          / g%dly(j-1) / g%r(j)
-            dfluxm_dy = (fluxm_y(i-1,j) * (g%r(j+1) + g%r(j)) / 2.0   &
-                         - fluxm_y(i-1,j-1) * (g%r(j) + g%r(j-1)) / 2.0) &
+            dfluxm_dy = (fluxm_y(2) * (g%r(j+1) + g%r(j)) / 2.0   &
+                         - fluxm_y(1) * (g%r(j) + g%r(j-1)) / 2.0) &
                          / g%dly(j-1) / g%r(j)
         else
-            dfluxi_dy = (fluxi_y(i-1,j) - fluxi_y(i-1,j-1)) / g%dly(j-1)
-            dfluxe_dy = (fluxe_y(i-1,j) - fluxe_y(i-1,j-1)) / g%dly(j-1)
-            dfluxt_dy = (fluxt_y(i-1,j) - fluxt_y(i-1,j-1)) / g%dly(j-1)
-            dfluxm_dy = (fluxm_y(i-1,j) - fluxm_y(i-1,j-1)) / g%dly(j-1)
+            dfluxi_dy = (fluxi_y(2) - fluxi_y(1)) / g%dly(j-1)
+            dfluxe_dy = (fluxe_y(2) - fluxe_y(1)) / g%dly(j-1)
+            dfluxt_dy = (fluxt_y(2) - fluxt_y(1)) / g%dly(j-1)
+            dfluxm_dy = (fluxm_y(2) - fluxm_y(1)) / g%dly(j-1)
         end if
         
         ! Y-dir midpoint fluxes
-        fluxi_ym = 0.5 * (fluxi_y(i-1,j) + fluxi_y(i-1,j-1))
-        fluxe_ym = 0.5 * (fluxe_y(i-1,j) + fluxe_y(i-1,j-1))
+        fluxe_y(1) = 0.5 * (fluxe_y(2) + fluxe_y(1))
         Ey = -((phi(i,j+1) - phi(i,j)) / g%dy(j) &
              +(phi(i,j) - phi(i,j-1)) / g%dy(j-1) &
              ) / 2.0
@@ -197,13 +184,13 @@
               - k_3q * ninf**2 * nm(i,j,2)
     
     ! -e flux_e . E
-    term_st1 = - ( fluxe_xm * Ex + fluxe_ym * Ey )
+    term_st1 = - (fluxe_x(1) * Ex + fluxe_y(1) * Ey)
 
     ! -me/mg nu_e (Te - Tg)
     term_st2 = nt(i,j,2) * nu * me/mi
 
     ! reactions
-    term_st3 =   h_ir * k_ir * ninf * ne(i,j,2) &
+    term_st3 =    h_ir * k_ir * ninf * ne(i,j,2) &
                 + h_si * k_si * nm(i,j,2) * ne(i,j,2) &
                 + h_ex * k_ex * ninf * ne(i,j,2) &
                 + h_sc * k_sc * nm(i,j,2) * ne(i,j,2)
@@ -217,9 +204,6 @@
     if (stage == 5) then
         tau_m = min(tau_m, eps0 * phi0 * x0 / e  &
                 / (get_mue(Te) * ne(i,j,2) + mui * ni(i,j,2)))
-        rho(i,j) = g%dt * (dfluxe_dx - dfluxi_dx + dfluxe_dy - dfluxi_dy)
-        jx(i,j) = fluxi_xm - fluxe_xm
-        jy(i,j) = fluxi_ym - fluxe_ym
     end if
     
     if (isnan(ki(i,j,stage))) then
@@ -245,397 +229,404 @@
     
     end subroutine
 
-! *** Update Ion Flux ***
-    subroutine upd_fluxi(g, phi)
+! *** Calculate Ion Density Flux ***
+    subroutine calc_fluxi(g, i, j, phi, fluxi_x, fluxi_y)
     type(grid), intent(in) :: g
-    real(8), intent(in)    :: phi(:,:)
-    integer :: i, j
-    real(8) :: a, Ex, Ey
+    integer, intent(in) :: i, j
+    real(8), intent(in) :: phi(:,:)
+    real(8), intent(out) :: fluxi_x(2), fluxi_y(2)
+    real(8) :: a, Ex(2), Ey(2)
     
-    ! X-dir Flux at i + 1/2
-    do j = 1, g%by
-        do i = 2, g%bx
-            Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
-            
-            call get_flux(fluxi_x(i,j), Ex, g%dx(i), 1, mui, Di, &
-                          ni(i,j+1,2), ni(i+1,j+1,2))
-        end do
-    end do
+    fluxi_x = 0
+    fluxi_y = 0
     
-    ! Y-dir Flux at j + 1/2
-    if (g%ny > 1) then
-        do j = 2, g%by
-            do i = 1, g%bx
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                call get_flux(fluxi_y(i,j), Ey, g%dy(j), 1, mui, Di, &
-                              ni(i+1,j,2), ni(i+1,j+1,2))
-            end do
-        end do
-    end if
+    ! X-dir fields:
+    Ex(1) = -(phi(i,j) - phi(i-1,j)) / g%dx(i-1)
+    Ex(2) = -(phi(i+1,j) - phi(i,j)) / g%dx(i)
     
-    ! X-Dir Boundary
-    do j = 1, g%by
-        ! Left boundary
-        i = 1
-        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
+    ! X-dir Fluxes:
+    ! - center -
+    if (g%type_x(i-1,j-1) == 0) then
+        ! Flux at i - 1/2
+        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+                      ni(i-1,j,2), ni(i,j,2))
+
+        ! Flux at i + 1/2
+        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+                      ni(i,j,2), ni(i+1,j,2))
+    
+    ! - left -
+    else if (g%type_x(i-1,j-1) < 0) then
+        ! Flux at i + 1/2
+        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+                      ni(i,j,2), ni(i+1,j,2))
         
-        ! Case: electrode
-        if (g%type_x(i,j) == -2) then
-            if (-Ex > 0) then
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == -2) then
+            if (Ex(1) < 0) then
                 a = 1
             else
                 a = 0
             end if
             
-            fluxi_x(i,j) = a * mui * Ex * ni(i+1,j+1,2) &
-                           - 0.25 * vi * ni(i+1,j+1,2)
-                           
-        ! Case: vacuum
-        else if (g%type_x(i,j) == -1) then
-            fluxi_x(i,j) = 0
-        
-        ! Case: interior domain (parallel only)
-        else
-            call get_flux(fluxi_x(i,j), Ex, g%dx(i), 1, mui, Di, &
-                          ni(i,j+1,2), ni(i+1,j+1,2))
+            ! Flux at i - 1/2
+            fluxi_x(1) = a * mui * Ex(1) * ni(i,j,2) - 0.25 * vi * ni(i,j,2)
+
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == -1) then
+            ! Flux at i - 1/2
+            fluxi_x(1) = 0
         end if
+    
+    ! - right -
+    else if (g%type_x(i-1,j-1) > 0) then
+        ! Flux at i - 1/2
+        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+                      ni(i-1,j,2), ni(i,j,2))
         
-        ! Right boundary
-        i = g%bx+1
-        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
-        
-        ! Case: electrode
-        if (g%type_x(i-1,j) == 2) then
-            if (Ex > 0) then
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == 2) then
+            if (Ex(2) > 0) then
                 a = 1
             else
                 a = 0
             end if
             
-            fluxi_x(i,j) = a * mui * Ex * ni(i,j+1,2) &
-                           + 0.25 * vi * ni(i,j+1,2)
-                          
-
-        ! Case: vacuum
-        else if (g%type_x(i-1,j) == 1) then
-            fluxi_x(i,j) = 0
+            ! Flux at i + 1/2
+            fluxi_x(2) = a * mui * Ex(2) * ni(i,j,2) + 0.25 * vi * ni(i,j,2)
             
-        ! Case: interior domain (parallel only)
-        else
-            call get_flux(fluxi_x(i,j), Ex, g%dx(i), 1, mui, Di, &
-                          ni(i,j+1,2), ni(i+1,j+1,2))
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == 1) then
+            ! Flux at i + 1/2
+            fluxi_x(2) = 0
         end if
-    end do
-    
-    ! Y-Dir Boundary
-    if (g%ny > 1) then
-        do i = 1, g%bx
-            ! Left boundary
-            j = 1
-            
-            ! Case: vacuum
-            if (g%type_y(i,j) == -1) then
-                fluxi_y(i,j) = 0
-            
-            ! Case: interior domain (parallel only)
-            else
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                call get_flux(fluxi_y(i,j), Ey, g%dy(j), 1, mui, Di, &
-                              ni(i+1,j,2), ni(i+1,j+1,2))
-            end if
-            
-            ! Right boundary
-            j = g%by+1
-            
-            ! Case: vacuum
-            if (g%type_y(i,j-1) == 1) then
-                fluxi_y(i,j) = 0
-
-            ! Case: interior domain (parallel only)
-            else
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                call get_flux(fluxi_y(i,j), Ey, g%dy(j), 1, mui, Di, &
-                              ni(i+1,j,2), ni(i+1,j+1,2))
-            end if
-        end do
     end if
+    
+    ! Y-dir Fluxes
+    if (g%ny > 1) then
+        Ey(1) = -(phi(i,j) - phi(i,j-1)) / g%dy(j-1)
+        Ey(2) = -(phi(i,j+1) - phi(i,j)) / g%dy(j)
+        
+        ! - center -
+        if (g%type_y(i-1,j-1) == 0) then
+            ! Flux at j - 1/2
+            call get_flux(fluxi_y(1), Ey(1), g%dy(j-1), 1, mui, Di, &
+                          ni(i,j-1,2), ni(i,j,2))
+
+            ! Flux at j + 1/2
+            call get_flux(fluxi_y(2), Ey(2), g%dy(j), 1, mui, Di, &
+                          ni(i,j,2), ni(i,j+1,2))
+        
+        ! - left -
+        else if (g%type_y(i-1,j-1) < 0) then
+            ! Flux at j + 1/2
+            call get_flux(fluxi_y(2), Ey(2), g%dy(j), 1, mui, Di, &
+                          ni(i,j,2), ni(i,j+1,2))
+
+            ! Flux at j - 1/2
+            fluxi_y(1) = 0
+        
+        ! - right -
+        else if (g%type_y(i-1,j-1) > 0) then
+            ! Flux at j - 1/2
+            call get_flux(fluxi_y(1), Ey(1), g%dy(j-1), 1, mui, Di, &
+                          ni(i,j-1,2), ni(i,j,2))
+            
+            ! Flux at j + 1/2
+            fluxi_y(2) = 0
+        end if
+    end if
+    
     end subroutine
 
 ! *** Update Electron Flux ***
-    subroutine upd_fluxe(g, phi)
+    subroutine calc_fluxe(g, i, j, phi, fluxe_x, fluxe_y, fluxt_x, fluxt_y)
     type(grid), intent(in) :: g
-    real(8), intent(in)    :: phi(:,:)
-    integer :: i, j
-    real(8) :: a, Te(2), mue, mut, ve, Ex, Ey
+    integer, intent(in) :: i, j
+    real(8), intent(in) :: phi(:,:)
+    real(8), intent(out) :: fluxe_x(2), fluxe_y(2), fluxt_x(2), fluxt_y(2)
+    real(8) :: a, Te(3), mue(2), mut(2), ve, Ex(2), Ey(2), fluxi
+
+    fluxe_x = 0
+    fluxe_y = 0
+    fluxt_x = 0
+    fluxt_y = 0
     
-    ! X-dir Flux at i + 1/2
-    do j = 1, g%by
-        do i = 2, g%bx
-            ! rates and coefficients
-            Te(1) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
-            Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-            mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-            mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-            
-            Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
-            
-            call get_fluxe(fluxe_x(i,j), Ex, mue, g%dx(i), &
-                           ne(i:i+1,j+1,2), Te)
-            call get_fluxt(fluxt_x(i,j), fluxe_x(i,j), mut, g%dx(i), &
-                           nt(i:i+1,j+1,2), Te)
-        end do
-    end do
+    ! X-dir fields:
+    Ex(1) = -(phi(i,j) - phi(i-1,j)) / g%dx(i-1)
+    Ex(2) = -(phi(i+1,j) - phi(i,j)) / g%dx(i)
     
-    ! Y-dir Flux at j + 1/2
-    if (g%ny > 1) then
-        do j = 2, g%by
-            do i = 1, g%bx
-                ! rates and coefficients
-                Te(1) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
-                Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-                mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-                mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-                
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                
-                call get_fluxe(fluxe_y(i,j), Ey, mue, g%dy(j), &
-                               ne(i+1,j:j+1,2), Te)
-                call get_fluxt(fluxt_y(i,j), fluxe_y(i,j), mut, g%dy(j), &
-                               nt(i+1,j:j+1,2), Te)
-            end do
-        end do
-    end if
-    
-    ! X-Dir Boundary
-    do j = 1, g%by
-        ! Left boundary
-        i = 1
-        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
+    ! X-dir Fluxes:
+    ! - center -
+    if (g%type_x(i-1,j-1) == 0) then
+        ! rates and coefficients
+        Te(1) = get_Te(nt(i-1,j,2), ne(i-1,j,2))
+        Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
+        Te(3) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
         
-        ! Case: electrode
-        if (g%type_x(i,j) == -2) then
-            if (Ex > 0) then
+        mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
+        mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
+        
+        mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+        mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+        
+        ! Flux at i - 1/2
+        call get_fluxe(fluxe_x(1), Ex(1), mue(1), g%dx(i-1), &
+                       ne(i-1:i,j,2), Te(1:2))
+        call get_fluxt(fluxt_x(1), fluxe_x(1), mut(1), g%dx(i-1), &
+                       nt(i-1:i,j,2), Te(1:2))
+
+        ! Flux at i + 1/2
+        call get_fluxe(fluxe_x(2), Ex(2), mue(2), g%dx(i), &
+                       ne(i:i+1,j,2), Te(2:3))
+        call get_fluxt(fluxt_x(2), fluxe_x(2), mut(2), g%dx(i), &
+                       nt(i:i+1,j,2), Te(2:3))
+        
+    
+    ! - left -
+    else if (g%type_x(i-1,j-1) < 0) then
+        ! rates and coefficients
+        Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
+        Te(3) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
+        
+        mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
+        mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+
+        ! Flux at i + 1/2
+        call get_fluxe(fluxe_x(2), Ex(2), mue(2), g%dx(i), &
+                       ne(i:i+1,j,2), Te(2:3))
+        call get_fluxt(fluxt_x(2), fluxe_x(2), mut(2), g%dx(i), &
+                       nt(i:i+1,j,2), Te(2:3))
+        
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == -2) then
+            if (Ex(1) > 0) then
                 a = 1
             else
                 a = 0
             end if
             
-            Te(1) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-            mue = get_mue(Te(1))
-            mut = get_mut(Te(1))
-            ve = sqrt( (16.0 * e * phi0 * Te(1)) / (3.0 * pi * me)) * t0 / x0
+            mue(1) = get_mue(Te(2))
+            mut(1) = get_mut(Te(2))
+            ve = sqrt((16.0 * e * phi0 * Te(2)) / (3.0 * pi * me)) * t0 / x0
             
-            fluxe_x(i,j) = - a * mue * Ex * ne(i+1,j+1,2) &
-                           - 0.25 * ve * ne(i+1,j+1,2) &
-                           - gam * fluxi_x(i,j)
+            ! Flux at i - 1/2
+            fluxi = (1 - a) * mui * Ex(1) * ni(i,j,2) - 0.25 * vi * ni(i,j,2)
             
-            fluxt_x(i,j) = - a * mut * Ex * nt(i+1,j+1,2) &
-                           - 1.0/3.0 * ve * nt(i+1,j+1,2) &
-                           - gam * Te(1) * fluxi_x(i,j)
+            fluxe_x(1) = - a * mue(1) * Ex(1) * ne(i,j,2) &
+                         - 0.25 * ve * ne(i,j,2) &
+                         - gam * fluxi
+            
+            fluxt_x(1) = - a * mut(1) * Ex(1) * nt(i,j,2) &
+                         - 1.0/3.0 * ve * nt(i,j,2) &
+                         - gam * Te(2) * fluxi
 
-        ! Case: vacuum
-        else if (g%type_x(i,j) == -1) then
-            fluxe_x(i,j) = 0
-            fluxt_x(i,j) = 0
-        
-        ! Case: interior domain (parallel only)
-        else
-            ! rates and coefficients
-            Te(1) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
-            Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-            mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-            mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-            
-            Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
-            
-            call get_fluxe(fluxe_x(i,j), Ex, mue, g%dx(i), &
-                           ne(i:i+1,j+1,2), Te)
-            call get_fluxt(fluxt_x(i,j), fluxe_x(i,j), mut, g%dx(i), &
-                           nt(i:i+1,j+1,2), Te)
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == -1) then
+            ! Flux at i - 1/2
+            fluxe_x(1) = 0
+            fluxt_x(1) = 0
         end if
+    
+    ! - right -
+    else if (g%type_x(i-1,j-1) > 0) then
+        ! rates and coefficients
+        Te(1) = get_Te(nt(i-1,j,2), ne(i-1,j,2))
+        Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
         
-        ! Right boundary
-        i = g%bx+1
-        Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
+        mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
+        mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
         
-        ! Case: electrode
-        if (g%type_x(i-1,j) == 2) then
-            if (-Ex > 0) then
+        ! Flux at i - 1/2
+        call get_fluxe(fluxe_x(1), Ex(1), mue(1), g%dx(i-1), &
+                       ne(i-1:i,j,2), Te(1:2))
+        call get_fluxt(fluxt_x(1), fluxe_x(1), mut(1), g%dx(i-1), &
+                       nt(i-1:i,j,2), Te(1:2))
+        
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == 2) then
+            if (-Ex(2) > 0) then
                 a = 1
             else
                 a = 0
             end if
             
-            Te(1) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
-            mue = get_mue(Te(1))
-            mut = get_mut(Te(1))
-            ve = sqrt( (16.0 * e * phi0 * Te(1)) / (3.0 * pi * me)) * t0 / x0
+            mue(2) = get_mue(Te(2))
+            mut(2) = get_mut(Te(2))
+            ve = sqrt((16.0 * e * phi0 * Te(2)) / (3.0 * pi * me)) * t0 / x0
             
-            fluxe_x(i,j) = - a * mue * Ex * ne(i,j+1,2) &
-                           + 0.25 * ve * ne(i,j+1,2) &
-                           - gam * fluxi_x(i,j)
-
-            fluxt_x(i,j) = - a * mut * Ex * nt(i,j+1,2) &
-                           + 1.0/3.0 * ve * nt(i,j+1,2) &
-                           - gam * Te(1) * fluxi_x(i,j)
-
-        ! Case: vacuum
-        else if (g%type_x(i-1,j) == 1) then
-            fluxe_x(i,j) = 0
-            fluxt_x(i,j) = 0
+            ! Flux at i + 1/2
+            fluxi = (1 - a) * mui * Ex(2) * ni(i,j,2) + 0.25 * vi * ni(i,j,2)
             
-        ! Case: interior domain (parallel only)
-        else
+            fluxe_x(2) = - a * mue(2) * Ex(2) * ne(i,j,2) &
+                         + 0.25 * ve * ne(i,j,2) &
+                         - gam * fluxi
+
+            fluxt_x(2) = - a * mut(2) * Ex(2) * nt(i,j,2) &
+                         + 1.0/3.0 * ve * nt(i,j,2) &
+                         - gam * Te(2) * fluxi
+
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == 1) then
+            ! Flux at i + 1/2
+            fluxe_x(2) = 0
+            fluxt_x(2) = 0
+        end if
+    end if
+    
+    ! Y-dir Fluxes
+    if (g%ny > 1) then
+        Ey(1) = -(phi(i,j) - phi(i,j-1)) / g%dy(j-1)
+        Ey(2) = -(phi(i,j+1) - phi(i,j)) / g%dy(j)
+        
+        ! - center -
+        if (g%type_y(i-1,j-1) == 0) then
             ! rates and coefficients
-            Te(1) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
-            Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-            mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-            mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+            Te(1) = get_Te(nt(i,j-1,2), ne(i,j-1,2))
+            Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
+            Te(3) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
             
-            Ex = -(phi(i+1,j+1) - phi(i,j+1)) / g%dx(i)
+            mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
+            mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
             
-            call get_fluxe(fluxe_x(i,j), Ex, mue, g%dx(i), &
-                           ne(i:i+1,j+1,2), Te)
-            call get_fluxt(fluxt_x(i,j), fluxe_x(i,j), mut, g%dx(i), &
-                           nt(i:i+1,j+1,2), Te)
-        end if
-    end do
-    
-    ! Y-Dir Boundary
-    if (g%ny > 1) then
-        do i = 1, g%bx
-            ! Left boundary
-            j = 1
+            mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+            mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
             
-            ! Case: vacuum
-            if (g%type_y(i,j) == -1) then
-                fluxe_y(i,j) = 0
-                fluxt_y(i,j) = 0
-            
-            ! Case: interior domain (parallel only)
-            else
-                ! rates and coefficients
-                Te(1) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
-                Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-                mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-                mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-                
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                
-                call get_fluxe(fluxe_y(i,j), Ey, mue, g%dy(j), &
-                               ne(i+1,j:j+1,2), Te)
-                call get_fluxt(fluxt_y(i,j), fluxe_y(i,j), mut, g%dy(j), &
-                               nt(i+1,j:j+1,2), Te)
-            end if
-            
-            ! Right boundary
-            j = g%by+1
-            
-            ! Case: vacuum
-            if (g%type_y(i,j-1) == 1) then
-                fluxe_y(i,j) = 0
-                fluxt_y(i,j) = 0
+            ! Flux at j - 1/2
+            call get_fluxe(fluxe_y(1), Ey(1), mue(1), g%dy(j-1), &
+                           ne(i,j-1:j,2), Te(1:2))
+            call get_fluxt(fluxt_y(1), fluxe_y(1), mut(1), g%dy(j-1), &
+                           nt(i,j-1:j,2), Te(1:2))
 
-            ! Case: interior domain (parallel only)
-            else
-                ! rates and coefficients
-                Te(1) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
-                Te(2) = get_Te(nt(i+1,j+1,2), ne(i+1,j+1,2))
-                mue = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-                mut = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-                
-                Ey = -(phi(i+1,j+1) - phi(i+1,j)) / g%dy(j)
-                
-                call get_fluxe(fluxe_y(i,j), Ey, mue, g%dy(j), &
-                               ne(i+1,j:j+1,2), Te)
-                call get_fluxt(fluxt_y(i,j), fluxe_y(i,j), mut, g%dy(j), &
-                               nt(i+1,j:j+1,2), Te)
-            end if
-        end do
+            ! Flux at j + 1/2
+            call get_fluxe(fluxe_y(2), Ey(2), mue(2), g%dy(j), &
+                           ne(i,j:j+1,2), Te(2:3))
+            call get_fluxt(fluxt_y(2), fluxe_y(2), mut(2), g%dy(j), &
+                           nt(i,j:j+1,2), Te(2:3))
+            
+        
+        ! - left -
+        else if (g%type_y(i-1,j-1) < 0) then
+            ! rates and coefficients
+            Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
+            Te(3) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
+            
+            mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
+            mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+
+            ! Flux at j + 1/2
+            call get_fluxe(fluxe_y(2), Ey(2), mue(2), g%dy(j), &
+                           ne(i,j:j+1,2), Te(2:3))
+            call get_fluxt(fluxt_y(2), fluxe_y(2), mut(2), g%dy(j), &
+                           nt(i,j:j+1,2), Te(2:3))
+            
+            ! Flux at j - 1/2
+            fluxe_y(1) = 0
+            fluxt_y(1) = 0
+        
+        ! - right -
+        else if (g%type_y(i-1,j-1) > 0) then
+            ! rates and coefficients
+            Te(1) = get_Te(nt(i,j-1,2), ne(i,j-1,2))
+            Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
+            
+            mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
+            
+            mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+            
+            ! Flux at j - 1/2
+            call get_fluxe(fluxe_y(1), Ey(1), mue(1), g%dy(j-1), &
+                           ne(i,j-1:j,2), Te(1:2))
+            call get_fluxt(fluxt_y(1), fluxe_y(1), mut(1), g%dy(j-1), &
+                           nt(i,j-1:j,2), Te(1:2))
+            
+            ! Flux at j + 1/2
+            fluxe_y(2) = 0
+            fluxt_y(2) = 0
+        end if
     end if
     end subroutine
 
-! *** Update Metastable Flux ***
-    subroutine upd_fluxm(g)
+! *** Calculate Metastable Flux ***
+    subroutine calc_fluxm(g, i, j, fluxm_x, fluxm_y)
     type(grid), intent(in) :: g
-    integer :: i, j
+    integer, intent(in) :: i, j
+    real(8), intent(out) :: fluxm_x(2), fluxm_y(2)
     
-    ! X-dir Flux at i + 1/2
-    do j = 1, g%by
-        fluxm_x(:,j) = -Dm * (nm(2:,j+1,2) - nm(:g%bx+1,j+1,2)) / g%dx
-    end do
+    fluxm_x = 0
+    fluxm_y = 0
     
-    ! Y-dir Flux at j + 1/2
-    if (g%ny > 1) then
-        do i = 1, g%bx
-            fluxm_y(i,:) = -Dm * (nm(i+1,2:,2) - nm(i+1,:g%by+1,2)) / g%dy
-        end do
+    ! X-dir Fluxes:
+    ! - center -
+    if (g%type_x(i-1,j-1) == 0) then
+        ! Flux at i - 1/2
+        fluxm_x(1) = -Dm * (nm(i,j,2) - nm(i-1,j,2)) / g%dx(i-1)
+        
+        ! Flux at i + 1/2
+        fluxm_x(2) = -Dm * (nm(i+1,j,2) - nm(i,j,2)) / g%dx(i)
+    
+    ! - left -
+    else if (g%type_x(i-1,j-1) < 0) then
+        ! Flux at i + 1/2
+        fluxm_x(2) = -Dm * (nm(i+1,j,2) - nm(i,j,2)) / g%dx(i)
+        
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == -2) then
+            
+            ! Flux at i - 1/2
+            fluxm_x(1) = - 0.25 * vi * nm(i,j,2)
+
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == -1) then
+            ! Flux at i - 1/2
+            fluxm_x(1) = 0
+        end if
+    
+    ! - right -
+    else if (g%type_x(i-1,j-1) > 0) then
+        ! Flux at i - 1/2
+        fluxm_x(1) = -Dm * (nm(i,j,2) - nm(i-1,j,2)) / g%dx(i-1)
+        
+        ! - electrode -
+        if (g%type_x(i-1,j-1) == 2) then
+            
+            ! Flux at i + 1/2
+            fluxm_x(2) = 0.25 * vi * nm(i,j,2)
+            
+        ! - vacuum -
+        else if (g%type_x(i-1,j-1) == 1) then
+            ! Flux at i + 1/2
+            fluxm_x(2) = 0
+        end if
     end if
     
-    ! X-Dir Boundary
-    do j = 1, g%by
-        ! Left boundary
-        i = 1
-        
-        ! Case: electrode
-        if (g%type_x(i,j) == -2) then
-            fluxm_x(i,j) = -0.25 * vi * nm(i+1,j+1,2)
-
-        ! Case: vacuum
-        else if (g%type_x(i,j) == -1) then
-            fluxm_x(i,j) = 0
-        
-        ! Case: interior domain (parallel only)
-        else
-            fluxm_x(i,j) = -Dm * (nm(i+1,j+1,2) - nm(i,j+1,2)) / g%dx(i)
-        end if
-        
-        ! Right boundary
-        i = g%bx+1
-        
-        ! Case: electrode
-        if (g%type_x(i-1,j) == 2) then
-            fluxm_x(i,j) = 0.25 * vi * nm(i,j+1,2)
-
-        ! Case: vacuum
-        else if (g%type_x(i-1,j) == 1) then
-            fluxm_x(i,j) = 0
-            
-        ! Case: interior domain (parallel only)
-        else
-            fluxm_x(i,j) = -Dm * (nm(i+1,j+1,2) - nm(i,j+1,2)) / g%dx(i)
-        end if
-    end do
-    
-    ! Y-Dir Boundary
+    ! Y-dir Fluxes
     if (g%ny > 1) then
-        do i = 1, g%bx
-            ! Left boundary
-            j = 1
+        ! - center -
+        if (g%type_y(i-1,j-1) == 0) then
+            ! Flux at j - 1/2
+            fluxm_y(1) = -Dm * (nm(i,j,2) - nm(i,j-1,2)) / g%dy(j-1)
             
-            ! Case: vacuum
-            if (g%type_y(i,j) == -1) then
-                fluxm_y(i,j) = 0
-            
-            ! Case: interior domain (parallel only)
-            else
-                fluxm_y(i,j) = -Dm * (nm(i+1,j+1,2) - nm(i+1,j,2)) / g%dy(j)
-            end if
-            
-            ! Right boundary
-            j = g%by+1
-            
-            ! Case: vacuum
-            if (g%type_y(i,j-1) == 1) then
-                fluxm_y(i,j) = 0
-                
-            ! Case: interior domain (parallel only)
-            else
-                fluxm_y(i,j) = -Dm * (nm(i+1,j+1,2) - nm(i+1,j,2)) / g%dy(j)
-            end if
-        end do
+            ! Flux at j + 1/2
+            fluxm_y(2) = -Dm * (nm(i,j+1,2) - nm(i,j,2)) / g%dy(j)
+        
+        ! - left -
+        else if (g%type_y(i-1,j-1) < 0) then
+            ! Flux at j + 1/2
+            fluxm_y(2) = -Dm * (nm(i,j+1,2) - nm(i,j,2)) / g%dy(j)
+
+            ! Flux at j - 1/2
+            fluxm_y(1) = 0
+        
+        ! - right -
+        else if (g%type_y(i-1,j-1) > 0) then
+            ! Flux at j - 1/2
+            fluxm_y(1) = -Dm * (nm(i,j,2) - nm(i,j-1,2)) / g%dy(j-1)
+
+            ! Flux at j + 1/2
+            fluxm_y(2) = 0
+        end if
     end if
+    
     end subroutine
-    
-    
     end module

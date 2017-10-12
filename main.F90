@@ -118,7 +118,7 @@
         call lapl_solve(g)
         
         ! Solve particle system
-        call p_step(g, phif(:,:,1))
+        call p_step(g, phi_pl)
         
         if ((t_pr <= g%t) .and. (my_id == 0)) then
             call cpu_time(time2)
@@ -131,7 +131,7 @@
     
         if (t_sv <= g%t) then
         !if (mod(ts,int(3)) == 0) then
-            call savedat('output/phi.dat', phif(:,:,1) * phi0)
+            call savedat('output/phi.dat', phi_pl * phi0)
             call savedat('output/ni.dat', ni(:,:,1) / x0**3)
             call savedat('output/ne.dat', ne(:,:,1) / x0**3)
             call savedat('output/nt.dat', nt(:,:,1) * phi0 / x0**3)
