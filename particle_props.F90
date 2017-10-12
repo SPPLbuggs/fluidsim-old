@@ -85,10 +85,10 @@
     end subroutine
     
 ! *** Runge-Kutta Adaptive Timestepping ***
-    subroutine rk_step(g, n, k, stage, dt, nerr_n, order)
+    subroutine rk_step(g, n, k, stage, dt, nerr_n, order, n_min)
     type(grid), intent(in) :: g
     integer, intent(in) :: stage, order
-    real(8), intent(in) :: dt, k(:,:,:)
+    real(8), intent(in) :: dt, k(:,:,:), n_min
     real(8), intent(inout) :: n(:,:,:), nerr_n
     real(8) :: err_n(g%bx+2, g%by+2), abs_tol = 1e-4, rel_tol = 1e-4
     integer :: i,j
@@ -121,7 +121,7 @@
             end do
         end if
         
-        n(:,:,1:2) = max(n(:,:,1:2), n_zero)
+        n(:,:,1:2) = max(n(:,:,1:2), n_min)
         
         call comm_real(g%bx, g%by, n(:,:,1))
         call comm_real(g%bx, g%by, n(:,:,2))
@@ -135,7 +135,7 @@
                 end do
             end do
             
-            n(:,:,2) = max(n(:,:,2), n_zero)
+            n(:,:,2) = max(n(:,:,2), n_min)
             call comm_real(g%bx, g%by, n(:,:,2))
             
         else if (stage == 2) then
@@ -145,7 +145,7 @@
                  end do
             end do
                
-            n(:,:,2) = max(n(:,:,2), n_zero)
+            n(:,:,2) = max(n(:,:,2), n_min)
             
             call comm_real(g%bx, g%by, n(:,:,2))
             
@@ -156,7 +156,7 @@
                 end do
             end do
             
-            n(:,:,2) = max(n(:,:,2), n_zero)
+            n(:,:,2) = max(n(:,:,2), n_min)
             call comm_real(g%bx, g%by, n(:,:,2))
             
         else if (stage == 4) then
@@ -167,7 +167,7 @@
                 end do
             end do
             
-            n(:,:,2) = max(n(:,:,2), n_zero)
+            n(:,:,2) = max(n(:,:,2), n_min)
             call comm_real(g%bx, g%by, n(:,:,2))
         else
             do j = 2, g%by+1
@@ -177,7 +177,7 @@
                 end do
             end do
             
-            n(:,:,1) = max(n(:,:,1), n_zero)
+            n(:,:,1) = max(n(:,:,1), n_min)
             call comm_real(g%bx, g%by, n(:,:,1))
             
             err_n = 0

@@ -77,6 +77,7 @@
             case ('-vl')
                 call getarg(2 * (i - 1) + 2, arg)
                 read(arg,*) vl
+                vl = vl / phi0
         end select
     end do
     

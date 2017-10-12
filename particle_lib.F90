@@ -46,10 +46,10 @@
             end do
         end do
         
-        call rk_step(g, ni, ki, stage, g%dt, err_ni, 4)
-        call rk_step(g, ne, ke, stage, g%dt, err_ne, 4)
-        call rk_step(g, nt, kt, stage, g%dt, err_nt, 4)
-        call rk_step(g, nm, km, stage, g%dt, err_nm, 4)
+        call rk_step(g, ni, ki, stage, g%dt, err_ni, 4, n_zero)
+        call rk_step(g, ne, ke, stage, g%dt, err_ne, 4, n_zero)
+        call rk_step(g, nt, kt, stage, g%dt, err_nt, 4, n_zero/phi0/100.)
+        call rk_step(g, nm, km, stage, g%dt, err_nm, 4, n_zero)
         
         if (stage == 5) then
             err_cur = (err_ni**2 + err_ne**2 + &
