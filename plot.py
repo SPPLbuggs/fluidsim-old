@@ -68,14 +68,22 @@ if (False):
 xx,tt = np.meshgrid(x,t)
 yloc = 0
 
+tloc = [ts/10,ts/2,-1]
+tloc[0] = np.argmin(np.abs(t-0.2))
+
+nxticks = np.array([1e15, 1e16, 1e17, 1e18])
+nxlim   = [3e14, 5e18]
+
 # *** phi Plot ***
 fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
 (ax1,ax2) = axes
-ax1.plot(phi[ts/10,yloc,:],x,label='{:.1f}us'.format(t[ts/10]), color = colors[0])
-ax1.plot(phi[ts/2,yloc,:],x,label='{:.1f}us'.format(t[ts/2]), color = colors[1])
-ax1.plot(phi[-1,yloc,:],x,label='{:.1f}us'.format(t[-1]), color = colors[2])
+ax1.plot(phi[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
+ax1.plot(phi[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[1])
+ax1.plot(phi[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[2])
 ax1.set_xlabel('Electric Potential (V)')
 ax1.set_ylabel('x (mm)')
+ax1.set_ylim([0, 7.5])
+ax1.set_yticks(np.arange(0,7.6,1.5))
 ax1.legend(frameon=False, loc='best')
 
 im = ax2.contourf(tt,xx,phi[:,yloc,:],30, cmap = 'plasma', zorder = -20)
@@ -90,21 +98,28 @@ if (sv):
     plt.savefig('figures/phi_streak.eps', dpi=300, frameon=None)
 
 # *** Ne Plot ***
-if ne.max() > 1.01e12:
+if ne.max() > nxlim[0]:
     fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
     (ax1,ax2) = axes
-    ax1.plot(ne[ts/10,yloc,:],x,label='{:.1f}us'.format(t[ts/10]), color = colors[0])
-    ax1.plot(ne[ts/2,yloc,:],x,label='{:.1f}us'.format(t[ts/2]), color = colors[1])
-    ax1.plot(ne[-1,yloc,:],x,label='{:.1f}us'.format(t[-1]), color = colors[2])
+    ax1.plot(ne[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
+    ax1.plot(ne[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[1]]), color = colors[1])
+    ax1.plot(ne[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[2]]), color = colors[2])
     ax1.set_xlabel('Density (m-3)')
     ax1.set_xscale('log')
+    ax1.set_xticks(nxticks)
+    ax1.set_xlim(nxlim)
     ax1.set_ylabel('x (mm)')
+    ax1.set_ylim([0, 7.5])
+    ax1.set_yticks(np.arange(0,7.6,1.5))
     ax1.legend(frameon=False, loc='best')
     
-    im = ax2.contourf(tt,xx,np.log10(ne[:,yloc,:]),30, cmap = 'plasma', zorder = -20)
+    v = np.linspace(np.log10(nxlim[0]), np.log10(nxlim[-1]),30)
+    im = ax2.contourf(tt,xx, np.maximum(np.log10(ne[:,yloc,:]),v[0]), v,
+                      cmap='plasma', zorder=-20)
     ax2.set_xlabel('Time ($\mu$s)')
     plt.suptitle('(b) Electron Density (n$_e$)')
-    clb = fig.colorbar(im)
+    v = np.log10(nxticks)
+    clb = fig.colorbar(im, ticks =v)
     clb.ax.set_title('(log$_{10}$m$^{-3}$)')
     ax2.set_xscale('log')
     #ax2.set_rasterization_zorder(-10)
@@ -113,21 +128,28 @@ if ne.max() > 1.01e12:
         plt.savefig('figures/ne_streak.eps', dpi=300, frameon=None)
 
 # *** Ni Plot ***
-if ni.max() > 1.01e12:
+if ni.max() > nxlim[0]:
     fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
     (ax1,ax2) = axes
-    ax1.plot(ni[ts/10,yloc,:],x,label='{:.1f}us'.format(t[ts/10]), color = colors[0])
-    ax1.plot(ni[ts/2,yloc,:],x,label='{:.1f}us'.format(t[ts/2]), color = colors[1])
-    ax1.plot(ni[-1,yloc,:],x,label='{:.1f}us'.format(t[-1]), color = colors[2])
+    ax1.plot(ni[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
+    ax1.plot(ni[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[1]]), color = colors[1])
+    ax1.plot(ni[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[2]]), color = colors[2])
     ax1.set_xlabel('Density (m-3)')
     ax1.set_xscale('log')
+    ax1.set_xticks(nxticks)
+    ax1.set_xlim(nxlim)
     ax1.set_ylabel('x (mm)')
+    ax1.set_ylim([0, 7.5])
+    ax1.set_yticks(np.arange(0,7.6,1.5))
     ax1.legend(frameon=False, loc='best')
-
-    im = ax2.contourf(tt,xx,np.log10(ni[:,yloc,:]),30, cmap = 'plasma', zorder = -20)
+    
+    v = np.linspace(np.log10(nxlim[0]), np.log10(nxlim[-1]),30)
+    im = ax2.contourf(tt,xx,np.maximum(np.log10(ni[:,yloc,:]),v[0]), v,
+                      cmap='plasma', zorder=-20)
     ax2.set_xlabel('Time ($\mu$s)')
     plt.suptitle('(c) Ion Density (n$_i$)')
-    clb = fig.colorbar(im)
+    v = np.log10(nxticks)
+    clb = fig.colorbar(im, ticks = v)
     clb.ax.set_title('(log$_{10}$m$^{-3}$)')
     ax2.set_xscale('log')
     #ax2.set_rasterization_zorder(-10)
@@ -139,20 +161,24 @@ if ni.max() > 1.01e12:
 if nt.max() > 1.01:
     fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
     (ax1,ax2) = axes
-    ax1.plot(nt[ts/10,yloc,:],x,label='{:.1f}us'.format(t[ts/10]), color = colors[0])
-    ax1.plot(nt[ts/2,yloc,:],x,label='{:.1f}us'.format(t[ts/2]), color = colors[1])
-    ax1.plot(nt[-1,yloc,:],x,label='{:.1f}us'.format(t[-1]), color = colors[2])
+    ax1.plot(nt[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
+    ax1.plot(nt[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[1]]), color = colors[1])
+    ax1.plot(nt[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[2]]), color = colors[2])
     ax1.set_xlabel('Temperature (eV)')
+    ax1.set_xscale('log')
+    ax1.set_xlim([0.2, 150])
     ax1.set_ylabel('x (mm)')
+    ax1.set_ylim([0, 7.5])
+    ax1.set_yticks(np.arange(0,7.6,1.5))
     ax1.legend(frameon=False, loc='best')
     
-    v = np.linspace(0,51,30)
-    im = ax2.contourf(tt,xx,nt[:,yloc,:],v, cmap = 'plasma', zorder = -20)
+    v = np.linspace(-0.7,2.5,30)
+    im = ax2.contourf(tt,xx,np.log10(nt[:,yloc,:]),v, cmap='plasma', zorder=-20)
     ax2.set_xlabel('Time ($\mu$s)')
     plt.suptitle('(d) Electron Temperature (T$_e$)')
-    v = np.arange(0,51,10)
+    v = np.arange(-1,3,1)
     clb = fig.colorbar(im, ticks=v)
-    clb.ax.set_title('(eV)')
+    clb.ax.set_title('(log$_{10}$eV)')
     ax2.set_xscale('log')
     #ax2.set_rasterization_zorder(-10)
     
@@ -160,23 +186,30 @@ if nt.max() > 1.01:
         plt.savefig('figures/nt_streak.eps', dpi=300, frameon=None)
 
 # *** Nm Plot ***
-if nm.max() > 1.01e12:
+if nm.max() > nxlim[0]:
     xx,tt = np.meshgrid(x,t)
     fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
     (ax1,ax2) = axes
-    ax1.plot(nm[ts/10,yloc,:],x,label='{:.1f}us'.format(t[ts/10]), color = colors[0])
-    ax1.plot(nm[ts/2,yloc,:],x,label='{:.1f}us'.format(t[ts/2]), color = colors[1])
-    ax1.plot(nm[-1,yloc,:],x,label='{:.1f}us'.format(t[-1]), color = colors[2])
+    ax1.plot(nm[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
+    ax1.plot(nm[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[1]]), color = colors[1])
+    ax1.plot(nm[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[2]]), color = colors[2])
     ax1.set_xlabel('Density (m-3)')
     ax1.set_xscale('log')
+    ax1.set_xticks(nxticks)
+    ax1.set_xlim(nxlim)
     ax1.set_ylabel('x (mm)')
+    ax1.set_ylim([0, 7.5])
+    ax1.set_yticks(np.arange(0,7.6,1.5))
     ax2.set_xscale('log')
     ax1.legend(frameon=False, loc='best')
-
-    im = ax2.contourf(tt,xx,np.log10(nm[:,yloc,:]),30,cmap='plasma',zorder=-20)
+    
+    v = np.linspace(np.log10(nxlim[0]), np.log10(nxlim[-1]),30)
+    im = ax2.contourf(tt,xx,np.maximum(np.log10(nm[:,yloc,:]),v[0]),v,
+                      cmap='plasma',zorder=-20)
     ax2.set_xlabel('Time ($\mu$s)')
     plt.suptitle('(e) Metastable Density (n$_m$)')
-    clb = fig.colorbar(im)
+    v = np.log10(nxticks)
+    clb = fig.colorbar(im,ticks=v)
     clb.ax.set_title('(log$_{10}$m$^{-3}$)')
     #ax2.set_rasterization_zorder(-10)
     
@@ -196,13 +229,17 @@ if len(y) > 1:
     
     if (sv):
         plt.savefig('figures/phi_2d.eps', dpi=300, frameon=None)
-
+    
+    
     fig = plt.figure(figsize=(4.0,3.5))
     plt.xlabel('y')
     plt.ylabel('x')
     plt.axis('equal')
-    plt.contourf(y, x, np.log10(ne[-1,:,:].T+1), 30, zorder=-20, cmap = 'plasma')
-    plt.colorbar()
+    v = np.linspace(np.log10(nxlim[0]), np.log10(nxlim[-1]),30)
+    plt.contourf(y, x, np.maximum(np.log10(ne[-1,:,:].T+1), v[0]), v, 
+                 zorder=-20, cmap = 'plasma')
+    v = np.log10(nxticks)
+    clb = fig.colorbar(im, ticks = v)
     plt.title('(g) 2D Electron Density (n$_e$)')
     #plt.rasterization_zorder(-10)
     

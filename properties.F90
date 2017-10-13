@@ -34,7 +34,6 @@
     real(8), parameter:: Tg     = 350,                            & ! kelvin
                          p      = 3,                              & ! torr
                          ninf   = p * 101325d0 / 760d0 / kb / Tg * x0**3, &
-                         n_init = 1e14 * x0**3, &
                          n_zero = 1e8 * x0**3
     
     real(8) :: phiL = 0, phiR = 0

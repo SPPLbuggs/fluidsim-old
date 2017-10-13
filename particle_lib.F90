@@ -97,7 +97,7 @@
     km = 0
     ni = n_init
     ne = n_init
-    nt = n_init / phi0
+    nt = n_init / phi0 / 100.
     nm = n_init
     end subroutine
 
@@ -248,18 +248,24 @@
     ! - center -
     if (g%type_x(i-1,j-1) == 0) then
         ! Flux at i - 1/2
-        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
-                      ni(i-1,j,2), ni(i,j,2))
+        !call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+        !              ni(i-1,j,2), ni(i,j,2))
+        call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
+                       ni(i-1:i,j,2))
 
         ! Flux at i + 1/2
-        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
-                      ni(i,j,2), ni(i+1,j,2))
+        !call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+        !              ni(i,j,2), ni(i+1,j,2))
+        call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
+                       ni(i:i+1,j,2))
     
     ! - left -
     else if (g%type_x(i-1,j-1) < 0) then
         ! Flux at i + 1/2
-        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
-                      ni(i,j,2), ni(i+1,j,2))
+        !call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+        !              ni(i,j,2), ni(i+1,j,2))
+        call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
+                       ni(i:i+1,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == -2) then
@@ -281,8 +287,10 @@
     ! - right -
     else if (g%type_x(i-1,j-1) > 0) then
         ! Flux at i - 1/2
-        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
-                      ni(i-1,j,2), ni(i,j,2))
+        !call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+        !              ni(i-1,j,2), ni(i,j,2))
+        call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
+                       ni(i-1:i,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == 2) then

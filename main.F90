@@ -7,7 +7,8 @@
     
     type(grid) :: g
     integer :: ts = 0, nx, ny, i, narg, rftype
-    real(8) :: l, w, ew, vl, t_fin, sim_start, sim_fin, time1, time2, t_pr, t_sv
+    real(8) :: l, w, ew, vl, t_fin, t_pr, t_sv, t_sv0, &
+               sim_start, sim_fin, time1, time2
     character(80):: arg
     
     call PetscInitialize(petsc_null_character, ierr)
@@ -30,7 +31,9 @@
     rftype = 0
     t_fin = 20
     t_pr = 2.77778e-3
-    t_sv = 5e-3
+    t_sv = 3e-2
+    t_sv0 = 5e-3
+    
     
     ! Check for -help
     narg = iargc()
@@ -78,6 +81,10 @@
                 call getarg(2 * (i - 1) + 2, arg)
                 read(arg,*) vl
                 vl = vl / phi0
+            case ('-n0')
+                call getarg(2 * (i - 1) + 2, arg)
+                read(arg,*) n_init
+                n_init = n_init * x0**3
         end select
     end do
     
@@ -142,7 +149,8 @@
             if (my_id == 0) call MPI_File_Write(fh, g%t, 1, etype, stat, ierr)
             call MPI_File_Close(fh, ierr)
             
-            t_sv = t_sv + 5e-3
+            t_sv  = t_sv + t_sv0
+            t_sv0 = t_sv0 * 1.01
         end if
     end do
     

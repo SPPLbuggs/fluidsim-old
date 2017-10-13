@@ -1,7 +1,10 @@
     module ptcl_props
     use props
     implicit none
-
+    
+    ! Particle density initialization
+    real(8) :: n_init = 1e11 * x0**3
+    
     ! electron properties
     real(8), parameter:: me = 9.10938188e-31
 
