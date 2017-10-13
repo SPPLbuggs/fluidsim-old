@@ -9,7 +9,7 @@
     integer :: rftype
     
     ! variables
-    public  :: phif
+    public  :: phi_pl
     private :: ampl, rftype
     
     ! subroutines and functions
@@ -47,29 +47,26 @@
         end do
     end if
     
-    ! Assemble new residual b:
-    !call assem_b(g, phi_pl, phi_eval)
-    
+    ! * Step electric potential *
+    ! Create PETSc objects and assemble
     call petsc_create(g)
-    
-    call assem_Ab(g, phi_pl, phif_eval)
-    
-    !call view
-    
+    call assem_Ab(g, phi_pl, phi_eval)
+
     ! Solve system:
     call KSPSolve(ksp, b, b, ierr)
     
     call KSPGetConvergedReason(ksp, conv_reason, ierr)
     if ((my_id == 0) .and. (conv_reason .ne. 2)) write(*,3) conv_reason
-3 format('Converged not based on relative tolerance. Reason = ',i0)
+    3 format('KSP did not converge; Reason = ',i0)
     
-    ! Update Phi with new values:
+    ! Update variables with solution:
     call upd_soln(g, phi_pl)
     
-    if (ry == 0) phi_pl(:,1) = phi_pl(:,2)
-    if (ry == py-1) phi_pl(:,g%by+2,1) = phi_pl(:,g%by+1)
-    
+    ! Destroy PETSc objects
     call petsc_destroy
+    
+    if (ry == 0) phi_pl(:,1) = phi_pl(:,2)
+    if (ry == py-1) phi_pl(:,g%by+2) = phi_pl(:,g%by+1)
     
     end subroutine
 
@@ -79,8 +76,8 @@
     real(8), intent(in) :: vl
     integer, intent(in) :: intype
     
-    allocate(ph_plf(g%bx+2, g%by+2))
-    phif = 0
+    allocate(phi_pl(g%bx+2, g%by+2))
+    phi_pl = 0
     
     rftype = intype
     ampl = vl
@@ -92,7 +89,7 @@
     end subroutine
 
 ! *** Evaluate phi equation ***
-    subroutine phif_eval(g, i, j, n, m, phi, b_temp)
+    subroutine phi_eval(g, i, j, n, m, phi, b_temp)
     type(grid), intent(in) :: g
     integer, intent(in) :: i, j, n, m
     real(8), intent(in) :: phi(n,m)

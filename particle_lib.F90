@@ -52,7 +52,7 @@
             scfac = min(2.5d0, max(3d-1, scfac))
             g%dt = scfac * g%dt
             
-            g%dt = min(max(g%dt, 1d-9), tau_m/2.0)
+            g%dt = min(max(g%dt, 1d-9), tau_m*2.0)
             
             call MPI_Bcast(g%dt, 1, etype, 0, comm, ierr)
            

@@ -14,7 +14,7 @@
         subroutine subIn(g, i, j, n, m, f, b_temp)
             use props
             type(grid), intent(in) :: g
-            integer, intent(in) :: i, j, n, m, dof
+            integer, intent(in) :: i, j, n, m
             real(8), intent(in) :: f(n,m)
             real(8), intent(out) :: b_temp(1)
         end subroutine
@@ -28,7 +28,7 @@
 
     ! Petsc Objects A and b
     call MatCreate(comm, A, ierr)
-    call MatSetSizes(A, g%nloc, g%nloc, nglob, nglob, ierr)
+    call MatSetSizes(A, g%nloc, g%nloc, g%nglob, g%nglob, ierr)
     call MatSetUp(A, ierr)
     call MatSetFromOptions(A, ierr)
     call MatSeqAIJSetPreallocation(A, 5, petsc_null_integer, ierr)
@@ -115,7 +115,7 @@
     real(8), intent(in):: b_temp(1)
     real(8), intent(inout):: f(:,:), A_temp(:,:)
     real(8) :: perturb, temp, b_pert(1)
-    integer :: i,j,d,k, width, k_start, k_stop
+    integer :: i,j,k, width, k_start, k_stop
     integer, dimension(5,2):: stencil
 
     ! initialize
@@ -166,7 +166,6 @@
         A_temp(k, :) = (b_pert - b_temp) / perturb
         
         f(i,j) = temp
-        end do
     end do
     end subroutine
     
@@ -177,13 +176,11 @@
     integer :: i,j
     real(8) :: soln(1)
     
-    do d = 1, dof
-        do j = 2, g%by+1
-            do i = 2, g%bx+1
-                nn = g%node(i,j)
-                call VecGetValues(b, 1, nn, soln, ierr)        
-                f(i,j) = f(i,j) + soln(1)
-            end do
+    do j = 2, g%by+1
+        do i = 2, g%bx+1
+            nn = g%node(i,j)
+            call VecGetValues(b, 1, nn, soln, ierr)        
+            f(i,j) = f(i,j) + soln(1)
         end do
     end do
     

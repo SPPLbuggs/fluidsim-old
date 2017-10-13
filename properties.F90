@@ -10,8 +10,8 @@
     integer(kind=MPI_Offset_Kind) :: dispx, dispy
     
     type :: grid
-        integer :: nx, ny, bx, by, offx, offy, nglob, nloc, dof
-        integer, allocatable :: type_x(:,:), type_y(:,:), node(:,:,:)
+        integer :: nx, ny, bx, by, offx, offy, nglob, nloc
+        integer, allocatable :: type_x(:,:), type_y(:,:), node(:,:)
         real(8) :: dt, t, l, w, ew
         real(8), allocatable :: dx(:), dlx(:), dy(:), dly(:), r(:)
     end type
@@ -34,7 +34,7 @@
     real(8), parameter:: Tg     = 350,                            & ! kelvin
                          p      = 3,                              & ! torr
                          ninf   = p * 101325d0 / 760d0 / kb / Tg * x0**3, &
-                         n_init = 1e12 * x0**3, &
+                         n_init = 1e14 * x0**3, &
                          n_zero = 1e8 * x0**3
     
     real(8) :: phiL = 0, phiR = 0
@@ -47,7 +47,7 @@
     type(grid), intent(inout) :: g
     real(8), intent(in) :: l, w, ew
     integer, intent(in) :: nx, ny, px, py
-    integer :: i, j, d
+    integer :: i, j
     real(8) :: xtemp, ytemp
     real(8), allocatable :: x(:), y(:)
     
@@ -151,22 +151,18 @@
     g%t = 0
     g%dt = 1e-6
     
-    g%dof   = 1
-    g%nloc  = g%bx * g%by * g%dof
-    g%nglob = g%nx * g%ny * g%dof
+    g%nloc  = g%bx * g%by
+    g%nglob = g%nx * g%ny
     
-    allocate( g%node(g%bx+2, g%by+2, g%dof) )
+    allocate( g%node(g%bx+2, g%by+2) )
     g%node = 0
-    do d = 1, g%dof
-        do j = 2, g%by+1
-            do i = 2, g%bx+1
-                g%node(i,j,d) = g%nloc * my_id + (d - 1) &
-                            + ((i - 2) + (j - 2) * g%bx) * g%dof
-            end do
+    do j = 2, g%by+1
+        do i = 2, g%bx+1
+            g%node(i,j) = g%nloc * my_id + (i - 2) + (j - 2) * g%bx
         end do
-        
-        call comm_int(g%bx, g%by, g%node(:,:,d))
     end do
+        
+    call comm_int(g%bx, g%by, g%node)
     
     ! MPI-IO Variables
     amode = MPI_Mode_WRonly + MPI_Mode_Create + MPI_Mode_EXCL
