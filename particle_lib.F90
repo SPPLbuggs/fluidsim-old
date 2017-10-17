@@ -52,7 +52,13 @@
             scfac = min(2.5d0, max(3d-1, scfac))
             g%dt = scfac * g%dt
             
-            g%dt = min(max(g%dt, 1d-9), tau_m*2.0)
+            call MPI_Allreduce(MPI_In_Place, tau_m, 1, etype, &
+                               MPI_Min, comm, ierr)
+            if (g%ny > 1) then
+                g%dt = min(max(g%dt, 1d-9), tau_m*sqrt(2.0))
+            else
+                g%dt = min(max(g%dt, 1d-9), tau_m*2.0)
+            end if
             
             call MPI_Bcast(g%dt, 1, etype, 0, comm, ierr)
            
@@ -194,7 +200,7 @@
                 + h_si * k_si * nm(i,j,2) * ne(i,j,2) &
                 + h_ex * k_ex * ninf * ne(i,j,2) &
                 + h_sc * k_sc * nm(i,j,2) * ne(i,j,2)
-
+    
     ! evaluate expression
     ki(i,j,stage) = -dfluxi_dx - dfluxi_dy + term_sie
     ke(i,j,stage) = -dfluxe_dx - dfluxe_dy + term_sie
@@ -248,24 +254,24 @@
     ! - center -
     if (g%type_x(i-1,j-1) == 0) then
         ! Flux at i - 1/2
-        !call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
-        !              ni(i-1,j,2), ni(i,j,2))
-        call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
-                       ni(i-1:i,j,2))
+        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+                      ni(i-1,j,2), ni(i,j,2))
+        !call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
+        !               ni(i-1:i,j,2))
 
         ! Flux at i + 1/2
-        !call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
-        !              ni(i,j,2), ni(i+1,j,2))
-        call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
-                       ni(i:i+1,j,2))
+        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+                      ni(i,j,2), ni(i+1,j,2))
+        !call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
+        !               ni(i:i+1,j,2))
     
     ! - left -
     else if (g%type_x(i-1,j-1) < 0) then
         ! Flux at i + 1/2
-        !call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
-        !              ni(i,j,2), ni(i+1,j,2))
-        call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
-                       ni(i:i+1,j,2))
+        call get_flux(fluxi_x(2), Ex(2), g%dx(i), 1, mui, Di, &
+                      ni(i,j,2), ni(i+1,j,2))
+        !call get_fluxi(fluxi_x(2), Ex(2), mui, Di, g%dx(i),&
+        !               ni(i:i+1,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == -2) then
@@ -287,10 +293,10 @@
     ! - right -
     else if (g%type_x(i-1,j-1) > 0) then
         ! Flux at i - 1/2
-        !call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
-        !              ni(i-1,j,2), ni(i,j,2))
-        call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
-                       ni(i-1:i,j,2))
+        call get_flux(fluxi_x(1), Ex(1), g%dx(i-1), 1, mui, Di, &
+                      ni(i-1,j,2), ni(i,j,2))
+        !call get_fluxi(fluxi_x(1), Ex(1), mui, Di, g%dx(i-1),&
+        !               ni(i-1:i,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == 2) then
@@ -320,16 +326,23 @@
             ! Flux at j - 1/2
             call get_flux(fluxi_y(1), Ey(1), g%dy(j-1), 1, mui, Di, &
                           ni(i,j-1,2), ni(i,j,2))
+            !call get_fluxi(fluxi_y(1), Ey(1), mui, Di, g%dy(j-1),&
+            !           ni(i,j-1:j,2))
 
             ! Flux at j + 1/2
             call get_flux(fluxi_y(2), Ey(2), g%dy(j), 1, mui, Di, &
                           ni(i,j,2), ni(i,j+1,2))
+            !call get_fluxi(fluxi_y(2), Ey(2), mui, Di, g%dy(j),&
+            !           ni(i,j:j+1,2))
+            
         
         ! - left -
         else if (g%type_y(i-1,j-1) < 0) then
             ! Flux at j + 1/2
             call get_flux(fluxi_y(2), Ey(2), g%dy(j), 1, mui, Di, &
                           ni(i,j,2), ni(i,j+1,2))
+            !call get_fluxi(fluxi_y(2), Ey(2), mui, Di, g%dy(j),&
+            !           ni(i,j:j+1,2))
 
             ! Flux at j - 1/2
             fluxi_y(1) = 0
@@ -339,6 +352,8 @@
             ! Flux at j - 1/2
             call get_flux(fluxi_y(1), Ey(1), g%dy(j-1), 1, mui, Di, &
                           ni(i,j-1,2), ni(i,j,2))
+            !call get_fluxi(fluxi_y(1), Ey(1), mui, Di, g%dy(j-1),&
+            !           ni(i,j-1:j,2))
             
             ! Flux at j + 1/2
             fluxi_y(2) = 0
@@ -569,14 +584,17 @@
     if (g%type_x(i-1,j-1) == 0) then
         ! Flux at i - 1/2
         fluxm_x(1) = -Dm * (nm(i,j,2) - nm(i-1,j,2)) / g%dx(i-1)
+        !call get_fluxm(fluxm_x(1), Dm, g%dx(i-1), nm(i-1:i,j,2))
         
         ! Flux at i + 1/2
         fluxm_x(2) = -Dm * (nm(i+1,j,2) - nm(i,j,2)) / g%dx(i)
+        !call get_fluxm(fluxm_x(2), Dm, g%dx(i), nm(i:i+1,j,2))
     
     ! - left -
     else if (g%type_x(i-1,j-1) < 0) then
         ! Flux at i + 1/2
         fluxm_x(2) = -Dm * (nm(i+1,j,2) - nm(i,j,2)) / g%dx(i)
+        !call get_fluxm(fluxm_x(2), Dm, g%dx(i), nm(i:i+1,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == -2) then
@@ -594,6 +612,7 @@
     else if (g%type_x(i-1,j-1) > 0) then
         ! Flux at i - 1/2
         fluxm_x(1) = -Dm * (nm(i,j,2) - nm(i-1,j,2)) / g%dx(i-1)
+        !call get_fluxm(fluxm_x(1), Dm, g%dx(i-1), nm(i-1:i,j,2))
         
         ! - electrode -
         if (g%type_x(i-1,j-1) == 2) then
@@ -614,14 +633,17 @@
         if (g%type_y(i-1,j-1) == 0) then
             ! Flux at j - 1/2
             fluxm_y(1) = -Dm * (nm(i,j,2) - nm(i,j-1,2)) / g%dy(j-1)
+            !call get_fluxm(fluxm_y(1), Dm, g%dy(j-1), nm(i,j-1:j,2))
             
             ! Flux at j + 1/2
             fluxm_y(2) = -Dm * (nm(i,j+1,2) - nm(i,j,2)) / g%dy(j)
+            !call get_fluxm(fluxm_y(2), Dm, g%dy(j), nm(i,j:j+1,2))
         
         ! - left -
         else if (g%type_y(i-1,j-1) < 0) then
             ! Flux at j + 1/2
             fluxm_y(2) = -Dm * (nm(i,j+1,2) - nm(i,j,2)) / g%dy(j)
+            !call get_fluxm(fluxm_y(2), Dm, g%dy(j), nm(i,j:j+1,2))
 
             ! Flux at j - 1/2
             fluxm_y(1) = 0
@@ -630,6 +652,7 @@
         else if (g%type_y(i-1,j-1) > 0) then
             ! Flux at j - 1/2
             fluxm_y(1) = -Dm * (nm(i,j,2) - nm(i,j-1,2)) / g%dy(j-1)
+            !call get_fluxm(fluxm_y(1), Dm, g%dy(j-1), nm(i,j-1:j,2))
 
             ! Flux at j + 1/2
             fluxm_y(2) = 0

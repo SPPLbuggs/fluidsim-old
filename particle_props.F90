@@ -86,6 +86,14 @@
     flux = 5.0/6.0 * Je * (T(1) + T(2)) &
          - 1.0/3.0 * mu * (n(2) + n(1)) * (T(2) - T(1)) / dh
     end subroutine
+
+! *** Metastable flux ***
+    subroutine get_fluxm(flux, D, dh, n)
+    real(8), intent(out) :: flux
+    real(8), intent(in)  :: D, dh, n(2)
+    
+    flux = -0.5 * (n(1) + n(2)) * D * log(n(2)/n(1)) / dh
+    end subroutine
     
 ! *** Runge-Kutta Adaptive Timestepping ***
     subroutine rk_step(g, n, k, stage, dt, nerr_n, order, n_min)

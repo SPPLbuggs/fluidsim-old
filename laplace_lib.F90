@@ -7,10 +7,11 @@
     real(8), allocatable :: phi_pl(:,:)
     real(8) :: ampl
     integer :: rftype
+    logical :: assem = .true.
     
     ! variables
     public  :: phi_pl
-    private :: ampl, rftype
+    private :: ampl, rftype, assem
     
     ! subroutines and functions
     public  :: lapl_solve, lapl_init
@@ -47,13 +48,16 @@
         end do
     end if
     
-    ! * Step electric potential *
-    ! Create PETSc objects and assemble
-    call petsc_create(g)
+    ! Assemble jacobian and RHS
     call assem_Ab(g, phi_pl, phi_eval)
+    if (assem) then
+        call MatSetOption(A, Mat_New_Nonzero_Locations, PETSc_False, ierr)
+        assem = .false.
+    end if
 
     ! Solve system:
-    call KSPSolve(ksp, b, b, ierr)
+    call KSPSetOperators(ksp, A, A, ierr)
+    call KSPSolve(ksp, b, x, ierr)
     
     call KSPGetConvergedReason(ksp, conv_reason, ierr)
     if ((my_id == 0) .and. (conv_reason .ne. 2)) write(*,3) conv_reason
@@ -61,9 +65,6 @@
     
     ! Update variables with solution:
     call upd_soln(g, phi_pl)
-    
-    ! Destroy PETSc objects
-    call petsc_destroy
     
     if (ry == 0) phi_pl(:,1) = phi_pl(:,2)
     if (ry == py-1) phi_pl(:,g%by+2) = phi_pl(:,g%by+1)
@@ -82,10 +83,8 @@
     rftype = intype
     ampl = vl
     
-    ! Create PETSc objects and assemble
-    !call petsc_create(g)
-    
-    !call assem_Ab(g, phi_pl, phif_eval)
+    ! Create PETSc objects
+    call petsc_create(g)
     end subroutine
 
 ! *** Evaluate phi equation ***

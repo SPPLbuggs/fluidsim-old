@@ -31,8 +31,8 @@
     rftype = 0
     t_fin = 20
     t_pr = 2.77778e-3
-    t_sv = 3e-2
-    t_sv0 = 5e-3
+    t_sv = 1e-3
+    t_sv0 = 1e-3
     
     
     ! Check for -help
@@ -162,9 +162,7 @@
         write(*,*)
     end if
     
-    call KSPDestroy(ksp,ierr)
-    call VecDestroy(b,ierr)
-    call MatDestroy(A,ierr)
+    call petsc_destroy
     call PetscFinalize(ierr)
 
 11 format('Timestep:', es10.2, '  Time:', es10.2, '  dT:', es10.2, '  Tm:', es10.2)

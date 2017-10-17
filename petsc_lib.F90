@@ -6,7 +6,7 @@
     
     ! Petsc Variables
     Mat A
-    Vec b
+    Vec b, x
     KSP ksp
     PetscInt Istart, Iend, ii, jj, nn(1)
     
@@ -42,9 +42,15 @@
     call VecSetFromOptions(b, ierr)
     call VecSetOption(b, vec_ignore_negative_indices, petsc_true, ierr)
     
+    call VecCreateMPI(comm, g%nloc, g%nglob, x, ierr)
+    call VecSetFromOptions(x, ierr)
+    call VecSetOption(x, vec_ignore_negative_indices, petsc_true, ierr)
+    
     ! Create Linear Solver
     call KSPCreate(comm, ksp, ierr)
     call KSPSetOperators(ksp, A, A, ierr)
+    call KSPSetInitialGuessNonzero(ksp, PETSC_TRUE, ierr)
+    call KSPSetTYpe(ksp, KSPIBCGS, ierr)
     call KSPSetFromOptions(ksp, ierr)
     
     end subroutine
@@ -179,7 +185,7 @@
     do j = 2, g%by+1
         do i = 2, g%bx+1
             nn = g%node(i,j)
-            call VecGetValues(b, 1, nn, soln, ierr)        
+            call VecGetValues(x, 1, nn, soln, ierr)        
             f(i,j) = f(i,j) + soln(1)
         end do
     end do
@@ -191,6 +197,7 @@
     subroutine petsc_destroy
     call KSPDestroy(ksp,ierr)
     call VecDestroy(b,ierr)
+    call VecDestroy(x,ierr)
     call MatDestroy(A,ierr)
     end subroutine
 

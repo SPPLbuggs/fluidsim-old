@@ -71,15 +71,15 @@ yloc = 0
 tloc = [ts/10,ts/2,-1]
 tloc[0] = np.argmin(np.abs(t-0.2))
 
-nxticks = np.array([1e15, 1e16, 1e17, 1e18])
+nxticks = np.array([1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20])
 nxlim   = [3e14, 5e18]
 
 # *** phi Plot ***
 fig,axes = plt.subplots(1,2,sharey=True,figsize=[8,3])
 (ax1,ax2) = axes
 ax1.plot(phi[tloc[0],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[0])
-ax1.plot(phi[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[1])
-ax1.plot(phi[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[0]]), color = colors[2])
+ax1.plot(phi[tloc[1],yloc,:],x,label='{:.1f}us'.format(t[tloc[1]]), color = colors[1])
+ax1.plot(phi[tloc[2],yloc,:],x,label='{:.1f}us'.format(t[tloc[2]]), color = colors[2])
 ax1.set_xlabel('Electric Potential (V)')
 ax1.set_ylabel('x (mm)')
 ax1.set_ylim([0, 7.5])
@@ -173,7 +173,8 @@ if nt.max() > 1.01:
     ax1.legend(frameon=False, loc='best')
     
     v = np.linspace(-0.7,2.5,30)
-    im = ax2.contourf(tt,xx,np.log10(nt[:,yloc,:]),v, cmap='plasma', zorder=-20)
+    im = ax2.contourf(tt,xx,np.maximum(np.log10(nt[:,yloc,:]),v[0]),v,
+                      cmap='plasma', zorder=-20)
     ax2.set_xlabel('Time ($\mu$s)')
     plt.suptitle('(d) Electron Temperature (T$_e$)')
     v = np.arange(-1,3,1)
