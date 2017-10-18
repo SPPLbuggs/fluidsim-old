@@ -219,6 +219,13 @@
         else
             p = 0
         end if
+    
+    else if (rftype == 4) then
+        if (t < 12d-3) then
+            p = ampl * sin(4 * pi * t * 20)**3
+        else
+            p = 0
+        end if
         
     else
         if (t < 1d0 / 16d0) then

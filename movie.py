@@ -5,6 +5,7 @@ from matplotlib import cm
 from scipy.io import FortranFile
 import glob
 from matplotlib import animation
+import types
 #from matplotlib import rcParams
 #rcParams.update({'figure.autolayout': True})
 
@@ -42,13 +43,14 @@ nt = np.zeros([nx,ny,ts])
 nm = np.zeros([nx,ny,ts])
 
 temp = np.fromfile('output/ne.dat',dtype=float)
-Ex = temp.reshape([ts, ny, nx])
+ne = temp.reshape([ts, ny, nx])
 
 interp = 'bilinear'
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4,4))
 im = NonUniformImage(ax, interpolation=interp, cmap='plasma', 
-                     extent=(x[0], x[-1], y[0], y[-1]))
-im.set_data(x, y, Ex[0,:,:])
+                     extent=(x[0], x[-1], y[0], y[-1]), zorder= -20)
+#ax.set_rasterization_zorder(-10)
+im.set_data(x, y, ne[0,:,:])
 ax.images.append(im)
 ax.set_xlim(x[0]-0.1, x[-1]+0.1)
 ax.set_ylim(y[0]-0.1, y[-1]+0.1)
@@ -58,7 +60,7 @@ ax.set_ylabel('y [mm]')
 plt.tight_layout()
 
 def anim(i):
-    im.set_data(x, y, Ex[i,:,:])
+    im.set_data(x, y, ne[i,:,:])
     ax.set_xlim(x[0]-0.1, x[-1]+0.1)
     ax.set_ylim(y[0]-0.1, y[-1]+0.1)
     tx.set_text(r'$n_e$ : time = {:.2f} $\mu$s'.format(t[i]))
@@ -66,4 +68,5 @@ def anim(i):
 
 ani = animation.FuncAnimation(fig, anim, frames = ts, interval = 75)
 
-plt.show()
+#plt.show()
+ani.save('figures/anim.gif', dpi = 100)

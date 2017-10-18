@@ -222,194 +222,119 @@
     function get_mue(T)
     real(8):: get_mue
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = 55.0126564455
-    b =  0.685594575551
-    c = -0.383637563328
-    d = -0.0340209762821
-    e =  0.0276748887423
-    f =  0.00242420301108
-    g = -0.0012183881312
-    h = -5.6471677382e-05
-    k =  2.11510269874e-05
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < log(1d-2)) x = log(1d-2)
-    get_mue = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * x0 / ninf * t0 * phi0
+    real(8):: x, &
+              a = 55.0126564455,     &
+              b =  0.685594575551,   &
+              c = -0.383637563328,   &
+              d = -0.0340209762821,  &
+              f =  0.0276748887423,  &
+              g =  0.00242420301108, &
+              h = -0.0012183881312,  &
+              i = -5.6471677382e-05, &
+              j =  2.11510269874e-05
+    
+    x = log(min(2d2, max(1d-2, T * phi0)))
+    
+    get_mue = exp(a + b*x + c*x**2. + d*x**3. + f*x**4. + g*x**5. &
+                  + h*x**6. + i*x**7. + j*x**8.) * x0 / ninf * t0 * phi0
     return
     end function get_mue
-  
-    function get_mut(T)
-    real(8):: get_mut
-    real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = 55.7894575628
-    b =  0.428129671316
-    c = -0.429648313902
-    d = -0.00193575524377
-    e =  0.034430796495
-    f =  0.000678700242152
-    g = -0.00153955670552
-    h = -2.38690441212d-05
-    k =  2.58672391609d-05
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < log(1d-2)) x = log(1d-2)
-    get_mut = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * x0 / ninf * t0 * phi0
-    return
-    end function get_mut
-  
-    function get_De(T)
-    real(8):: get_De
-    real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = 54.6077441165
-    b =  1.68552023011
-    c = -0.383788369738
-    d = -0.0340244943028
-    e =  0.0276980470142
-    f =  0.00242512124501
-    g = -0.00121973056843
-    h = -5.65037595561e-05
-    k =  2.1177126055e-05
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < log(1d-2)) x = log(1d-2)
-    get_De = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * x0 / ninf * t0
-    return
-    end function get_De
-
-    function get_Dt(T)
-    real(8) :: get_Dt
-    real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = 55.3840545867
-    b =  1.42801298837
-    c = -0.429629341572
-    d = -0.00191349710732
-    e =  0.0344269595677
-    f =  0.000677020293459
-    g = -0.001539248252
-    h = -2.3830286892e-05
-    k =  2.58597001685e-05
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < log(1d-2)) x = log(1d-2)
-    get_Dt = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * x0 / ninf * t0
-    return
-    end function get_Dt
-
+    
     function get_k_ex(T)
     real(8):: get_k_ex
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = -50.3785102239 
-    b =  19.0129183764
-    c = -11.7950315424
-    d =   7.41674013553
-    e =  -3.84148086698
-    f =   1.2962229976
-    g =  -0.259359346989
-    h =   0.0279182131315
-    k =  -0.00124438710099
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < -5d-1) then
-        get_k_ex = 0
-    else
-        get_k_ex = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-                 + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * t0 / x0**3
-    end if
+    real(8):: x, &
+              a = -50.3785102239,    &
+              b =  19.0129183764,    &
+              c = -11.7950315424,    &
+              d =   7.41674013553,   &
+              f =  -3.84148086698,   &
+              g =   1.2962229976,    &
+              h =  -0.259359346989,  &
+              i =   0.0279182131315, &
+              j =  -0.00124438710099
+              
+    x = log(min(2d2, max(5d-1, T * phi0)))
+    
+    get_k_ex = exp(a + b*x + c*x**2. + d*x**3. + f*x**4. + g*x**5. &
+                   + h*x**6. + i*x**7. + j*x**8.) * t0 / x0**3
     return
     end function get_k_ex
 
     function get_k_ir(T)
     real(8):: get_k_ir
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = -56.2478139553
-    b =  26.6123052468
-    c = -15.9868576469
-    d =   7.97316507041
-    e =  -3.18287109994
-    f =   0.890666459851
-    g =  -0.156771317788
-    h =   0.0153819279555
-    k =  -0.000638729430911
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < -5d-1) then
-        get_k_ir = 0d0
-    else
-        get_k_ir = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7. + k*x**8.) * t0 / x0**3
-    end if
+    real(8):: x, &
+              a = -56.2478139553,    &
+              b =  26.6123052468,    &
+              c = -15.9868576469,    &
+              d =   7.97316507041,   &
+              f =  -3.18287109994,   &
+              g =   0.890666459851,  &
+              h =  -0.156771317788,  &
+              i =   0.0153819279555, &
+              j =  -0.000638729430911
+              
+    x = log(min(2d2, max(5d-1, T * phi0)))
+
+    get_k_ir = exp(a + b*x + c*x**2. + d*x**3. + f*x**4. + g*x**5. &
+                   + h*x**6. + i*x**7. + j*x**8.) * t0 / x0**3
     return
     end function get_k_ir
 
     function get_nu(T)
     real(8):: get_nu
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f,g,h,k
-    a = -32.3199262825
-    b =   1.69388044254
-    c =   0.0842378277404
-    d =  -0.164556371047
-    e =   0.00861307304011
-    f =   0.00855257716132
-    g =  -0.000983504760785
-    h =  -0.000160952834008
-    k =   2.37965210684e-05
-    x = log(T * phi0)
-    if (x > log(2d2))  x = log(2d2)
-    if (x < log(1d-2)) x = log(1d-2)
-    get_nu = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. + g*x**6. + h*x**7 + k*x**8.) / x0**3 * ninf * t0
+    real(8):: x, &
+              a = -32.3199262825,      &
+              b =   1.69388044254,     &
+              c =   0.0842378277404,   &
+              d =  -0.164556371047,    &
+              f =   0.00861307304011,  &
+              g =   0.00855257716132,  &
+              h =  -0.000983504760785, &
+              i =  -0.000160952834008, &
+              j =   2.37965210684e-05
+              
+    x = log(min(2d2, max(1d-2, T * phi0)))
+    
+    get_nu = exp(a + b*x + c*x**2. + d*x**3. + f*x**4. + g*x**5. &
+                 + h*x**6. + i*x**7 + j*x**8.) / x0**3 * ninf * t0
     return
     end function get_nu
 
     function get_k_sc(T)
     real(8):: get_k_sc
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e,f
-    a = -21.4827864151
-    b =   0.457356923276
-    c =  -0.555439231606
-    d =   1.27257798891
-    e =  -0.67840685073
-    f =   0.10591014464
-    x = log(T * phi0)
-    if (x > log(16d0)) x = log(16d0)
-    if (x < -1d0) then
-        get_k_sc = 0d0
-    else
-        get_k_sc = exp(a + b*x + c*x**2. + d*x**3. + e*x**4. &
-        + f*x**5. ) / 1.0d6 / x0**3 * t0
-    end if
+    real(8):: x, &
+              a = -21.4827864151,   &
+              b =   0.457356923276, &
+              c =  -0.555439231606, &
+              d =   1.27257798891,  &
+              f =  -0.67840685073,  &
+              g =   0.10591014464
+              
+    x = log(min(16d0, max(5d-1, T * phi0)))
+    
+    get_k_sc = exp(a + b*x + c*x**2. + d*x**3. + f*x**4. &
+                   + g*x**5. ) / 1.0d6 / x0**3 * t0
     return
     end function get_k_sc
 
     function get_k_si(T)
     real(8):: get_k_si
     real(8), intent(in):: T
-    real(8):: x,a,b,c,d,e
-    a = -43.1347385848
-    b =  43.9905424566
-    c = -28.1169537586
-    d =   8.28853856817
-    e =  -0.931626144207
-    x = log(T * phi0)
-    if (x > log(16d0)) x = log(16d0)
-    if (x < -5d-1) then
-        get_k_si = 0d0
-    else
-        get_k_si = exp(a + b*x + c*x**2. + d*x**3. + e*x**4.) &
-        / 1.0d6 / x0**3 * t0
-    end if
+    real(8):: x, &
+              a = -43.1347385848, &
+              b =  43.9905424566, &
+              c = -28.1169537586, &
+              d =   8.28853856817, &
+              f =  -0.931626144207
+              
+    x = log(min(16d0, max(5d-1, T * phi0)))
+    
+    get_k_si = exp(a + b*x + c*x**2. + d*x**3. + f*x**4.) &
+                  / 1.0d6 / x0**3 * t0
     return
     end function get_k_si
 

@@ -24,8 +24,8 @@
     ny = 1
     px = 1
     py = 1
-    l  = 7.5
-    w  = 7.5
+    l  = 7.5e-3 / x0
+    w  = 7.5e-3 / x0
     ew = 1
     vl = -300/phi0
     rftype = 0

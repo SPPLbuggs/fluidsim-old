@@ -223,7 +223,7 @@ if len(y) > 1:
     plt.xlabel('y')
     plt.ylabel('x')
     plt.axis('equal')
-    plt.contourf(y, x, phi[-1,:,:].T, 30, zorder=-20, cmap = 'plasma')
+    plt.contourf(y, x, phi[tloc[1],:,:].T, 30, zorder=-20, cmap = 'plasma')
     plt.colorbar()
     plt.title('(f) 2D Potential ($\phi$)')
     #plt.rasterization_zorder(-10)
@@ -237,7 +237,7 @@ if len(y) > 1:
     plt.ylabel('x')
     plt.axis('equal')
     v = np.linspace(np.log10(nxlim[0]), np.log10(nxlim[-1]),30)
-    plt.contourf(y, x, np.maximum(np.log10(ne[-1,:,:].T+1), v[0]), v, 
+    plt.contourf(y, x, np.maximum(np.log10(ne[tloc[1],:,:].T+1), v[0]), v, 
                  zorder=-20, cmap = 'plasma')
     v = np.log10(nxticks)
     clb = fig.colorbar(im, ticks = v)

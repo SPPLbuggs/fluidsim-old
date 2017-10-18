@@ -55,14 +55,14 @@
             call MPI_Allreduce(MPI_In_Place, tau_m, 1, etype, &
                                MPI_Min, comm, ierr)
             if (g%ny > 1) then
-                g%dt = min(max(g%dt, 1d-9), tau_m*sqrt(2.0))
+                g%dt = min(max(g%dt, 1d-12), tau_m*sqrt(2.0))
             else
-                g%dt = min(max(g%dt, 1d-9), tau_m*2.0)
+                g%dt = min(max(g%dt, 1d-12), tau_m*2.0)
             end if
             
             call MPI_Bcast(g%dt, 1, etype, 0, comm, ierr)
            
-            if (g%dt <= 1.001d-8) then
+            if (g%dt <= 1.1d-12) then
                 write(*,*) 'minimum timestep reached; finishing simulation'
                 write(*,'(es10.2)') err_cur
                 stop
@@ -390,8 +390,7 @@
         mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
         mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
         
-        mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-        mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+        mut = 5./3. * mue
         
         ! Flux at i - 1/2
         call get_fluxe(fluxe_x(1), Ex(1), mue(1), g%dx(i-1), &
@@ -413,7 +412,7 @@
         Te(3) = get_Te(nt(i+1,j,2), ne(i+1,j,2))
         
         mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
-        mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+        mut(2) = 5./3. * mue(2)
 
         ! Flux at i + 1/2
         call get_fluxe(fluxe_x(2), Ex(2), mue(2), g%dx(i), &
@@ -430,7 +429,7 @@
             end if
             
             mue(1) = get_mue(Te(2))
-            mut(1) = get_mut(Te(2))
+            mut(1) = 5./3. * mue(1)
             ve = sqrt((16.0 * e * phi0 * Te(2)) / (3.0 * pi * me)) * t0 / x0
             
             ! Flux at i - 1/2
@@ -458,7 +457,7 @@
         Te(2) = get_Te(nt(i,j,2),   ne(i,j,2))
         
         mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
-        mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+        mut(1) = 5./3. * mue(1)
         
         ! Flux at i - 1/2
         call get_fluxe(fluxe_x(1), Ex(1), mue(1), g%dx(i-1), &
@@ -475,7 +474,7 @@
             end if
             
             mue(2) = get_mue(Te(2))
-            mut(2) = get_mut(Te(2))
+            mut(2) = 5./3. * mue(2)
             ve = sqrt((16.0 * e * phi0 * Te(2)) / (3.0 * pi * me)) * t0 / x0
             
             ! Flux at i + 1/2
@@ -512,8 +511,7 @@
             mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
             mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
             
-            mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
-            mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+            mut = 5./3. * mue
             
             ! Flux at j - 1/2
             call get_fluxe(fluxe_y(1), Ey(1), mue(1), g%dy(j-1), &
@@ -535,7 +533,7 @@
             Te(3) = get_Te(nt(i,j+1,2), ne(i,j+1,2))
             
             mue(2) = 5d-1 * (get_mue(Te(2)) + get_mue(Te(3)))
-            mut(2) = 5d-1 * (get_mut(Te(2)) + get_mut(Te(3)))
+            mut(2) = 5./3. * mue(2)
 
             ! Flux at j + 1/2
             call get_fluxe(fluxe_y(2), Ey(2), mue(2), g%dy(j), &
@@ -555,7 +553,7 @@
             
             mue(1) = 5d-1 * (get_mue(Te(1)) + get_mue(Te(2)))
             
-            mut(1) = 5d-1 * (get_mut(Te(1)) + get_mut(Te(2)))
+            mut(1) = 5./3. * mue(1)
             
             ! Flux at j - 1/2
             call get_fluxe(fluxe_y(1), Ey(1), mue(1), g%dy(j-1), &
