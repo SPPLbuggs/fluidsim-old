@@ -15,11 +15,6 @@
         real(8) :: dt, t, l, w, ew
         real(8), allocatable :: dx(:), dlx(:), dy(:), dly(:), r(:)
     end type
-    
-    ! non-dimensional parameters
-    real(8), parameter:: x0   = 1e-3,    &
-                         phi0 = 1e3,     &
-                         t0 = 1e-6
 
     ! fundamental constants
     real(8), parameter:: pi     = 4d0 * atan(1d0),        &
@@ -28,23 +23,29 @@
                          c0     = 1d0 / sqrt(eps0 * mu0), &
                          e      = 1.60217646e-19,         &
                          kb     = 1.3806503e-23
-
+    
+    ! non-dimensional parameters
+    real(8), parameter:: x0   = 1e-3, &
+                         phi0 = e / (eps0 * x0), &
+                         t0   = 1e-6
+    
     ! case properties
-    real(8), parameter:: Tg     = 350,                            & ! kelvin
-                         p      = 3,                              & ! torr
+    real(8), parameter:: Tg     = 300, & ! kelvin
+                         p      = 3,   & ! torr
                          ninf   = p * 101325d0 / 760d0 / kb / Tg * x0**3, &
                          n_zero = 1e8 * x0**3
     
     real(8) :: phiL = 0, phiR = 0
-    logical, parameter:: cyl = .True.
+    logical, parameter:: cyl = .True., right_wall = .True.
 
     contains
     
     ! *** Initialize Grid ***
-    subroutine g_init(g, nx, ny, px, py, l, w, ew)
+    subroutine g_init(g, nx, ny, px, py, l, w, ew, path)
     type(grid), intent(inout) :: g
     real(8), intent(in) :: l, w, ew
     integer, intent(in) :: nx, ny, px, py
+    character(*), intent(in) :: path
     integer :: i, j
     real(8) :: xtemp, ytemp
     real(8), allocatable :: x(:), y(:)
@@ -84,7 +85,7 @@
     
     xtemp = 2.5 / float(g%nx+1)
     x = (/ ( tanh(-1.25 + xtemp * (g%offx + i - 1)), i = 1, g%bx+2) /)
-    !x = (/ ( g%l / float(g%bx+1) * (i - 1), i = 1, g%bx+2) /)
+    !x = (/ ( g%l / float(g%nx+1) * (g%offx + i - 1), i = 1, g%bx+2) /)
     
     xtemp = x(1)
     call MPI_Bcast( xtemp, 1, MPI_Real8, 0, comm, ierr)
@@ -101,7 +102,7 @@
     if (g%ny > 1) then
         ytemp = 1.25 / float(g%ny+1)
         y = (/ ( tanh(-1.25 + ytemp * (g%offy + j - 1)), j = 1, g%by+2) /)
-        !y = (/ ( g%w / float(g%by+1) * (j - 1), j = 1, g%by+2) /)
+        !y = (/ ( g%w / float(g%by+1) * (g%offy + j - 1), j = 1, g%by+2) /)
     
         ytemp = y(1)
         call MPI_Bcast( ytemp, 1, MPI_Real8, 0, comm, ierr)
@@ -147,7 +148,7 @@
     end do
     
     g%t = 0
-    g%dt = 1e-6
+    g%dt = 1e-4
     
     g%nloc  = g%bx * g%by
     g%nglob = g%nx * g%ny
@@ -171,65 +172,81 @@
     dispy  = ry*g%by*8
     
     ! Save mesh to disk
-    call MPI_File_Open(comm, 'output/meshx.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'meshx.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/meshx.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/meshx.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'meshx.dat', info, ierr);
+        call MPI_File_Open(comm, path//'meshx.dat', amode,  info, fh, ierr)
     end if
     
     call MPI_File_Set_View(fh, dispx, etype, etype, 'native', info, ierr)
-    if (ry == 0) call MPI_File_Write(fh, x, g%bx, etype, stat, ierr)
+    if (ry == 0) call MPI_File_Write(fh, x(2:g%bx+1), g%bx, etype, stat, ierr)
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/meshy.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'meshy.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/meshy.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/meshy.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'meshy.dat', info, ierr);
+        call MPI_File_Open(comm, path//'meshy.dat', amode,  info, fh, ierr)
     end if
     
-    call MPI_File_Set_View(fh, dispy, etype, etype, 'native', info, ierr)
-    if (rx == 0) call MPI_File_Write(fh, y, g%by, etype, stat, ierr)
-    call MPI_File_Close(fh, ierr)
-    
-    call MPI_File_Open(comm, 'output/time.dat', amode,  info, fh, ierr)
-    if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/time.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/time.dat', amode,  info, fh, ierr)
+    if (g%ny > 1) then
+        call MPI_File_Set_View(fh, dispy, etype, etype, 'native', info, ierr)
+        if (rx == 0) call MPI_File_Write(fh, y(2:g%by+1), g%by, etype, stat, ierr)
+        call MPI_File_Close(fh, ierr)
     end if
-    call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/phi.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'time.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/phi.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/phi.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'time.dat', info, ierr);
+        call MPI_File_Open(comm, path//'time.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/ni.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'vd.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/ni.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/ni.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'vd.dat', info, ierr);
+        call MPI_File_Open(comm, path//'vd.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/ne.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'id.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/ne.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/ne.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'id.dat', info, ierr);
+        call MPI_File_Open(comm, path//'id.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/nt.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'phi.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/nt.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/nt.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'phi.dat', info, ierr);
+        call MPI_File_Open(comm, path//'phi.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     
-    call MPI_File_Open(comm, 'output/nm.dat', amode,  info, fh, ierr)
+    call MPI_File_Open(comm, path//'ni.dat', amode,  info, fh, ierr)
     if (ierr .ne. MPI_SUCCESS) then
-        if (my_id == 0) call MPI_File_Delete('output/nm.dat', info, ierr);
-        call MPI_File_Open(comm, 'output/nm.dat', amode,  info, fh, ierr)
+        if (my_id == 0) call MPI_File_Delete(path//'ni.dat', info, ierr);
+        call MPI_File_Open(comm, path//'ni.dat', amode,  info, fh, ierr)
+    end if
+    call MPI_File_Close(fh, ierr)
+    
+    call MPI_File_Open(comm, path//'ne.dat', amode,  info, fh, ierr)
+    if (ierr .ne. MPI_SUCCESS) then
+        if (my_id == 0) call MPI_File_Delete(path//'ne.dat', info, ierr);
+        call MPI_File_Open(comm, path//'ne.dat', amode,  info, fh, ierr)
+    end if
+    call MPI_File_Close(fh, ierr)
+    
+    call MPI_File_Open(comm, path//'nt.dat', amode,  info, fh, ierr)
+    if (ierr .ne. MPI_SUCCESS) then
+        if (my_id == 0) call MPI_File_Delete(path//'nt.dat', info, ierr);
+        call MPI_File_Open(comm, path//'nt.dat', amode,  info, fh, ierr)
+    end if
+    call MPI_File_Close(fh, ierr)
+    
+    call MPI_File_Open(comm, path//'nm.dat', amode,  info, fh, ierr)
+    if (ierr .ne. MPI_SUCCESS) then
+        if (my_id == 0) call MPI_File_Delete(path//'nm.dat', info, ierr);
+        call MPI_File_Open(comm, path//'nm.dat', amode,  info, fh, ierr)
     end if
     call MPI_File_Close(fh, ierr)
     

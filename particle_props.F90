@@ -29,7 +29,7 @@
                          H_si  =   4.14d0 / phi0, &
                          H_sc  = -11.56d0 / phi0, &
                          beta  =   1d-13 * t0 / x0**3, &
-                         gam   =   0.075
+                         gam   =   0.1!0.075
 
     contains
 

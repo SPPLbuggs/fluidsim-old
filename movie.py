@@ -68,5 +68,5 @@ def anim(i):
 
 ani = animation.FuncAnimation(fig, anim, frames = ts, interval = 75)
 
-#plt.show()
-ani.save('figures/anim.gif', dpi = 100)
+plt.show()
+#ani.save('figures/anim.gif', dpi = 100)

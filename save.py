@@ -8,7 +8,7 @@ y = np.fromfile('output/meshy.dat',dtype=float)
 t = np.fromfile('output/time.dat', dtype=float)
 
 nx = len(x)
-ny = len(y)
+ny = max(len(y),1)
 ts = len(t)
 
 phi = np.zeros([nx,ny,ts])

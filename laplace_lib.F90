@@ -20,12 +20,14 @@
     contains
     
 ! *** Electromagnetic Timestepping Routine ***
-    subroutine lapl_solve(g)
+    subroutine lapl_solve(g, Vd, sig)
     type(grid), intent(in) :: g
+    real(8), intent(in) :: Vd, sig(:)
     integer :: j, conv_reason
     
     ! Update electrode potential
-    call upd_ep(g%t, phiL)
+    !call upd_ep(g%t, phiL)
+    phiL = Vd
     
     ! Update boundary conditions:
     if (rx == 0) then
@@ -48,6 +50,15 @@
         end do
     end if
     
+    if (ry == 0) phi_pl(:,1) = phi_pl(:,2)
+    if (ry == py-1) then
+        if ((right_wall) .and. (g%ny > 1)) then
+            phi_pl(:,g%by+2) = phi_pl(:,g%by+1) + g%dy(g%by+1) * sig
+        else
+            phi_pl(:,g%by+2) = phi_pl(:,g%by+1)
+        end if
+    end if
+    
     ! Assemble jacobian and RHS
     call assem_Ab(g, phi_pl, phi_eval)
     if (assem) then
@@ -60,14 +71,23 @@
     call KSPSolve(ksp, b, x, ierr)
     
     call KSPGetConvergedReason(ksp, conv_reason, ierr)
-    if ((my_id == 0) .and. (conv_reason .ne. 2)) write(*,3) conv_reason
+    if ((my_id == 0) .and. (conv_reason .ne. 2)) then
+        write(*,3) conv_reason
+        stop
+    end if
     3 format('KSP did not converge; Reason = ',i0)
     
     ! Update variables with solution:
     call upd_soln(g, phi_pl)
     
     if (ry == 0) phi_pl(:,1) = phi_pl(:,2)
-    if (ry == py-1) phi_pl(:,g%by+2) = phi_pl(:,g%by+1)
+    if (ry == py-1) then
+        if ((right_wall) .and. (g%ny > 1)) then
+            phi_pl(:,g%by+2) = phi_pl(:,g%by+1) + g%dy(g%by+1) * sig
+        else
+            phi_pl(:,g%by+2) = phi_pl(:,g%by+1)
+        end if
+    end if
     
     end subroutine
 
@@ -181,8 +201,8 @@
     end if
     
     ! Source term: e/epsilon*(n_i-n_e + dt*(del . flux_e - del . flux_i))
-    term_s = -e / (eps0 * phi0 * x0) * (ni(i,j,2) - ne(i,j,2) + &
-             g%dt * (dfluxe_dx + dfluxe_dy - dfluxi_dx - dfluxe_dx))
+    term_s = -(ni(i,j,2) - ne(i,j,2) + g%dt * (dfluxe_dx + dfluxe_dy &
+                                               - dfluxi_dx - dfluxe_dx))
     
     b_temp = dphi_dx + (dphi_dy - term_s) * g%dlx(i-1)
     
