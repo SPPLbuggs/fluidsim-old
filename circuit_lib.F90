@@ -22,7 +22,7 @@
     type(grid), intent(in) :: g
     real(8), intent(in) :: phi(:,:)
     integer :: i, j
-    real(8) :: a, fluxi, fluxe, Ex, Te, mue, ve
+    real(8) :: a, fluxi, fluxe, Ex, Te, mue, ve, Rtemp
     
     if (g%t < 1d0 / 16d0) then
         Vsrc = Vmax * sin(8d0 * pi * g%t)**3
@@ -67,7 +67,13 @@
     
     call MPI_Allreduce(MPI_In_Place, Id, 1, etype, MPI_Sum, comm, ierr)
     
-    Vd = Vd + g%dt / Cap * (Id - (Vd - Vsrc)/Res)
+    if (g%t < 7d-2) then
+        Rtemp = min(1e4 * e / (phi0 * t0), Res)
+    else
+        Rtemp = Res
+    end if
+    
+    Vd = Vd + g%dt / Cap * (Id - (Vd - Vsrc)/Rtemp)
     end subroutine
 
 ! *** External Circuit Initialization ***

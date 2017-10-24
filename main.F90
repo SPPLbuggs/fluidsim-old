@@ -22,8 +22,8 @@
     call cpu_time(sim_start)
     call cpu_time(time1)
     
-    nx = 60
-    ny = 60
+    nx = 90
+    ny = 90
     px = 1
     py = 1
     l  = 1e-2   / x0
@@ -115,12 +115,17 @@
         end if
     end if
     
+    if (ny > 1) then
+        write(path,41) int(res / 10**floor(log10(res))), floor(log10(res))
+    else
+        write(path,42) int(res / 10**floor(log10(res))), floor(log10(res))
+    end if
+    41 format('output/2d_res_',i0,'e',i0,'/')
+    42 format('output/1d_res_',i0,'e',i0,'/')
+    if (my_id == 0) call system('mkdir '//trim(path))
+    
     call MPI_Barrier(comm, ierr)
-    
-    write(path,4) int(res / 10**floor(log10(res))), floor(log10(res))
-    4 format('output/res_',i0,'e',i0,'/')
-    
-    call system('mkdir '//trim(path))
+
     
     call g_init(g, nx, ny, px, py, l, w, ew, trim(path))
     call p_init(g)
@@ -169,12 +174,12 @@
             
             call MPI_File_Open(comm, trim(path)//'vd.dat', &
                 MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
-            if (my_id == 0) call MPI_File_Write(fh, Vd, 1, etype, stat, ierr)
+            if (my_id == 0) call MPI_File_Write(fh, Vd*phi0, 1, etype, stat, ierr)
             call MPI_File_Close(fh, ierr)
             
             call MPI_File_Open(comm, trim(path)//'id.dat', &
                 MPI_MODE_WRonly + MPI_Mode_Append,  info, fh, ierr)
-            if (my_id == 0) call MPI_File_Write(fh, Id, 1, etype, stat, ierr)
+            if (my_id == 0) call MPI_File_Write(fh, Id*e/t0, 1, etype, stat, ierr)
             call MPI_File_Close(fh, ierr)
             
             t_sv  = t_sv + t_sv0

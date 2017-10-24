@@ -156,10 +156,10 @@
         ! Left boundary
         if (g%type_y(i-1,j-1) == -1) then
             if (cyl) then
-                dphi_dy = (phi(i,j+1) - phi(i,j)) / g%dy(i) &
+                dphi_dy = (phi(i,j+1) - phi(i,j)) / g%dy(j) &
                           * (g%r(j+1) + g%r(j)) / 2.0
             else
-                dphi_dy = (phi(i,j+1) - phi(i,j)) / g%dy(i)
+                dphi_dy = (phi(i,j+1) - phi(i,j)) / g%dy(j)
             end if
         
         ! Right boundary
